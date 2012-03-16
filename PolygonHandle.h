@@ -26,7 +26,7 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "Definitions.h"
+#include "definitions/Definitions.h"
 
 // Generic content
 class Field {

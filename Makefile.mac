@@ -1,11 +1,13 @@
 # Options
 CC=c++
 IPATH=/usr/include/gdal
-LPATH=/usr/lib
 
-CFLAGS=-Wall -O3 -frounding-math -fno-strict-aliasing -I$(IPATH) -L$(LPATH)
+CFLAGS=-O3 -DNDEBUG -I$(IPATH)
 
-LDFLAGS=-g -O3  -D_REENTRANT -frounding-math -Wl,-Bsymbolic-functions -L$(LPATH) -lCGAL_Core -lCGAL -lgmpxx -lmpfr -lgmp -lboost_thread-mt -lCGAL_Core -lCGAL -lgmpxx -lmpfr -lgmp -lboost_thread-mt -lgdal1.6.0
+LIBS=/Library/Frameworks/GDAL.framework/Versions/1.9/unix/lib/libgdal.dylib /usr/local/lib/libCGAL_Core.dylib /usr/local/lib/libCGAL.dylib /usr/local/lib/libmpfr.dylib /usr/local/lib/libgmp.dylib /usr/local/lib/libboost_thread.dylib
+
+LDFLAGS=-O3 -DNDEBUG -Wl,-search_paths_first -headerpad_max_install_names $(LIBS)
+
 
 all: main
 

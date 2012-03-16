@@ -27,7 +27,7 @@
  */
 
 #include "FaceInfo.h"
-#include "CGALDefinitions.h"
+#include "definitions/CGALDefinitions.h"
 
 class IOWorker {
 public:
