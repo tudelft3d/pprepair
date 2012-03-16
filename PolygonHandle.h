@@ -26,6 +26,9 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef POLYGONHANDLE_H
+#define POLYGONHANDLE_H
+
 #include "definitions/Definitions.h"
 
 // Generic content
@@ -142,3 +145,5 @@ public:
 private:
 	std::list<PolygonHandle *> handles;
 };
+
+#endif

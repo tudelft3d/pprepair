@@ -26,6 +26,9 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef FACEINFO_H
+#define FACEINFO_H
+
 #include "PolygonHandle.h"
 
 class FaceInfo {
@@ -53,3 +56,5 @@ private:
 	// If more than one, it points to a MultiPolygonHandle with a set of pointers to PolygonHandles.
 	PolygonHandle *tag;
 };
+
+#endif

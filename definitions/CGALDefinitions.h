@@ -26,6 +26,9 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef CGALDEFINITIONS_H
+#define CGALDEFINITIONS_H
+
 // Compile-time options
 #define EXACT_CONSTRUCTIONS
 #define TRIANGULATION_HIERARCHY
@@ -43,26 +46,33 @@
 // CGAL classes
 #include <CGAL/Polygon_2.h>
 #include <CGAL/Polygon_with_holes_2.h>
-#include <CGAL/Polygon_set_2.h>
-#include <CGAL/Boolean_set_operations_2.h>
 #include <CGAL/Triangulation_face_base_with_info_2.h>
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
 #include <CGAL/Triangulation_hierarchy_2.h>
 #include <CGAL/Constrained_triangulation_plus_2.h>
 
+// VertexInfo for SAFE
+#ifdef USE_VERTEX_INFO
+#include <VertexInfo.h>
+#endif
+
 // Kernel
 #ifdef EXACT_CONSTRUCTIONS
-typedef CGAL::Exact_predicates_exact_constructions_kernel K;
+    typedef CGAL::Exact_predicates_exact_constructions_kernel K;
 #else
-typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+    typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 #endif
 
 // Low level stuff
 #ifdef TRIANGULATION_HIERARCHY
-typedef CGAL::Triangulation_vertex_base_2<K> TVB;
-typedef CGAL::Triangulation_hierarchy_vertex_base_2<TVB> VB;
+    #ifdef USE_VERTEX_INFO
+        typedef CGAL::Triangulation_vertex_base_with_info_2<VertexInfo,K> TVB;
+    #else
+        typedef CGAL::Triangulation_vertex_base_2<K> TVB;
+    #endif
+    typedef CGAL::Triangulation_hierarchy_vertex_base_2<TVB> VB;
 #else
-typedef CGAL::Triangulation_vertex_base_2<K> VB;
+    typedef CGAL::Triangulation_vertex_base_2<K> VB;
 #endif
 typedef CGAL::Constrained_triangulation_face_base_2<K> FB;
 typedef CGAL::Triangulation_face_base_with_info_2<FaceInfo, K, FB> FBWI;
@@ -70,15 +80,15 @@ typedef CGAL::Triangulation_data_structure_2<VB, FBWI> TDS;
 typedef CGAL::Exact_predicates_tag PT;
 typedef CGAL::Exact_intersections_tag IT;
 #ifdef EXACT_CONSTRUCTIONS
-typedef CGAL::Constrained_Delaunay_triangulation_2<K, TDS, IT> CDT;
+    typedef CGAL::Constrained_Delaunay_triangulation_2<K, TDS, IT> CDT;
 #else
-typedef CGAL::Constrained_Delaunay_triangulation_2<K, TDS, PT> CDT;
+    typedef CGAL::Constrained_Delaunay_triangulation_2<K, TDS, PT> CDT;
 #endif
 #ifdef TRIANGULATION_HIERARCHY
-typedef CGAL::Triangulation_hierarchy_2<CDT> CDTH;
-typedef CGAL::Constrained_triangulation_plus_2<CDTH> Triangulation;
+    typedef CGAL::Triangulation_hierarchy_2<CDT> CDTH;
+    typedef CGAL::Constrained_triangulation_plus_2<CDTH> Triangulation;
 #else
-typedef CGAL::Constrained_triangulation_plus_2<CDT> Triangulation;
+    typedef CGAL::Constrained_triangulation_plus_2<CDT> Triangulation;
 #endif
 
 // Other types, for easy reading
@@ -89,3 +99,5 @@ typedef CGAL::Polygon_with_holes_2<K> Polygon;
 
 // Non CGAL types
 typedef std::vector<std::pair<std::vector<Triangulation::Vertex_handle>, std::vector<std::vector<Triangulation::Vertex_handle> > > > TaggingVector;
+
+#endif

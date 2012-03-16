@@ -26,6 +26,9 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef PLANARPARTITION_H
+#define PLANARPARTITION_H
+
 #include "IOWorker.h"
 
 class PlanarPartition {
@@ -80,3 +83,5 @@ private:  // Comment to have access to the triangulation and other data structur
     TaggingVector edgesToTag;
     std::vector<std::pair<PolygonHandle *, Polygon> > outputPolygons;
 };
+
+#endif

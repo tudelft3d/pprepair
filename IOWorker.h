@@ -26,6 +26,9 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef IOWORKER_H
+#define IOWORKER_H
+
 #include "FaceInfo.h"
 #include "definitions/CGALDefinitions.h"
 
@@ -143,3 +146,5 @@ private:
     void addtoCount(std::map<PolygonHandle *, unsigned int> &count, PolygonHandle *ph);
     void addToLength(std::map<PolygonHandle *, double> &lengths, PolygonHandle *ph, double length);
 };
+
+#endif

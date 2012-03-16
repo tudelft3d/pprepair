@@ -26,13 +26,19 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef DEFINITIONS_H
+#define DEFINITIONS_H
+
 // OGR, to store OGR types directly
 #include <gdal/ogrsf_frmts.h>
 
 // Standard libraries
 #include <iostream>
+#include <fstream>
 #include <time.h>
 
 // STL containers
 #include <vector>
 #include <list>
+
+#endif
