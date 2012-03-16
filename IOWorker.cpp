@@ -678,9 +678,8 @@ bool IOWorker::repairRegionsByRandomNeighbour(Triangulation &triangulation, bool
 			}
 			
 			// Find a random tag
-			bool foundTag = false;
 			PolygonHandle *tagToAssign;
-			do {
+			while (true) {
 				std::set<Triangulation::Face_handle>::iterator randomFace = facesInRegion.begin();
 				std::advance(randomFace, rand()%facesInRegion.size());
 				int neighbourIndex = rand()%3;
@@ -688,20 +687,14 @@ bool IOWorker::repairRegionsByRandomNeighbour(Triangulation &triangulation, bool
 				if (numberOfTags == 0) continue;
 				if (numberOfTags == 1) {
 					tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();
-					if (alsoUniverse || tagToAssign != &universe) {
-						foundTag = true;
-						break;
-					}
+					if (alsoUniverse || tagToAssign != &universe) break;
 				} else {
 					std::list<PolygonHandle *>::const_iterator randomTag = static_cast<MultiPolygonHandle *>((*randomFace)->neighbor(neighbourIndex)->info().getTags())->getHandles()->begin();
 					std::advance(randomTag, rand()%numberOfTags);
 					tagToAssign = *randomTag;
-					if (alsoUniverse || tagToAssign != &universe) {
-						foundTag = true;
-						break;
-					}
+					if (alsoUniverse || tagToAssign != &universe) break;
 				}
-			} while (!foundTag);
+			}
 			
 			// Assign the region to the random tag
 			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
@@ -799,7 +792,7 @@ bool IOWorker::repairByPriorityList(Triangulation &triangulation, const char *fi
 								tagToAssign = (*currentFaceInRegion)->neighbor(0)->info().getTags();
 							}
 						} else {
-							MultiPolygonHandle *handle = (MultiPolygonHandle *)(*currentFaceInRegion)->neighbor(0)->info().getTags();
+							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(0)->info().getTags());
 							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
 								if (*currentTag == &universe) continue;
 								if (priorityMap[(*currentTag)->getSchemaField()] < priorityOfTag) {
@@ -815,7 +808,7 @@ bool IOWorker::repairByPriorityList(Triangulation &triangulation, const char *fi
 								tagToAssign = (*currentFaceInRegion)->neighbor(1)->info().getTags();
 							}
 						} else {
-							MultiPolygonHandle *handle = (MultiPolygonHandle *)(*currentFaceInRegion)->neighbor(1)->info().getTags();
+							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(1)->info().getTags());
 							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
 								if (*currentTag == &universe) continue;
 								if (priorityMap[(*currentTag)->getSchemaField()] < priorityOfTag) {
@@ -831,7 +824,7 @@ bool IOWorker::repairByPriorityList(Triangulation &triangulation, const char *fi
 								tagToAssign = (*currentFaceInRegion)->neighbor(2)->info().getTags();
 							}
 						} else {
-							MultiPolygonHandle *handle = (MultiPolygonHandle *)(*currentFaceInRegion)->neighbor(2)->info().getTags();
+							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(2)->info().getTags());
 							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
 								if (*currentTag == &universe) continue;
 								if (priorityMap[(*currentTag)->getSchemaField()] < priorityOfTag) {
@@ -851,7 +844,7 @@ bool IOWorker::repairByPriorityList(Triangulation &triangulation, const char *fi
 							tagToAssign = (*currentFaceInRegion)->info().getTags();
 						}
 					} else {
-						MultiPolygonHandle *handle = (MultiPolygonHandle *)(*currentFaceInRegion)->info().getTags();
+						MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->info().getTags());
 						for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
 							if (*currentTag == &universe) continue;
 							if (priorityMap[(*currentTag)->getSchemaField()] < priorityOfTag) {
@@ -960,7 +953,7 @@ bool IOWorker::repairEdgeMatching(Triangulation &triangulation, const char *file
 								tagToAssign = (*currentFaceInRegion)->neighbor(0)->info().getTags();
 							}
 						} else {
-							MultiPolygonHandle *handle = (MultiPolygonHandle *)(*currentFaceInRegion)->neighbor(0)->info().getTags();
+							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(0)->info().getTags());
 							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
 								if (*currentTag == &universe) continue;
 								if (priorityMap[(*currentTag)->getSchemaField()] < priorityOfTagg) {
@@ -976,7 +969,7 @@ bool IOWorker::repairEdgeMatching(Triangulation &triangulation, const char *file
 								tagToAssign = (*currentFaceInRegion)->neighbor(1)->info().getTags();
 							}
 						} else {
-							MultiPolygonHandle *handle = (MultiPolygonHandle *)(*currentFaceInRegion)->neighbor(1)->info().getTags();
+							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(1)->info().getTags());
 							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
 								if (*currentTag == &universe) continue;
 								if (priorityMap[(*currentTag)->getSchemaField()] < priorityOfTagg) {
@@ -992,7 +985,7 @@ bool IOWorker::repairEdgeMatching(Triangulation &triangulation, const char *file
 								tagToAssign = (*currentFaceInRegion)->neighbor(2)->info().getTags();
 							}
 						} else {
-							MultiPolygonHandle *handle = (MultiPolygonHandle *)(*currentFaceInRegion)->neighbor(2)->info().getTags();
+							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(2)->info().getTags());
 							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
 								if (*currentTag == &universe) continue;
 								if (priorityMap[(*currentTag)->getSchemaField()] < priorityOfTagg) {
@@ -1012,7 +1005,7 @@ bool IOWorker::repairEdgeMatching(Triangulation &triangulation, const char *file
 							tagToAssign = (*currentFaceInRegion)->info().getTags();
 						}
 					} else {
-						MultiPolygonHandle *handle = (MultiPolygonHandle *)(*currentFaceInRegion)->info().getTags();
+						MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->info().getTags());
 						for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
 							if (*currentTag == &universe) continue;
 							if (priorityMap[(*currentTag)->getSchemaField()] < priorityOfTagh) {

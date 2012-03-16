@@ -51,6 +51,40 @@ int main(int argc, const char *argv[]) {
     double splitRegionsRatio;
     std::list<std::pair<RepairMethod, std::string> > repairMethods;
     
+    // Process help argument
+    if (argc == 1 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
+        std::cout << "=== pprepair Help ===" << std::endl;
+        std::cout << "    Simple:   pprepair [options]" << std::endl;
+        std::cout << "    Advanced: pprepair -p [processing steps in order]" << std::endl;
+        std::cout << "    Example:  ./pprepair -i \"myInput.shp\" -o \"myOutput.shp\" -fix" << std::endl;
+        std::cout << "== Basic options ==" << std::endl;
+        std::cout << "    -i filename [schemaindex] Add this file to the triangulation using this schema index" << std::endl;
+        std::cout << "    -o filename  Output the reconstructed polygons in this file" << std::endl;
+        std::cout << "    -fix  Automagically repair (same as -rrlb -rrrn)" << std::endl;
+        std::cout << "== Possible steps (in usual processing order) ==" << std::endl;
+        std::cout << "    -i filename [schemaindex] Add this file to the triangulation using this schema index" << std::endl;
+        std::cout << "    -t  Tag the triangulation" << std::endl;
+        std::cout << "    -otnt filename  Output the tagged triangulation with the number of tags to this file" << std::endl;
+        std::cout << "    -vh  Consider holes as valid" << std::endl;
+        std::cout << "    -sr ratio  Split invalid regions at triangles with a higher aspect ratio than this" << std::endl;
+        std::cout << "    -v  Validate" << std::endl;
+        std::cout << "    -au  Allow removing invalid regions (where convenient)" << std::endl;
+        std::cout << "    -rtnn  Repair triangles by assigning them to the neighbour present on most sides" << std::endl;
+        std::cout << "    -rtam  Repair triangles by assigning them to a neighbour present on at least 2 sides" << std::endl;
+        std::cout << "    -rtlb  Repair triangles by assigning them to the neighbour present along the longest part of their boundary" << std::endl;
+        std::cout << "    -rrlb  Repair regions by assigning them to the neighbour present along the longest part of their boundary" << std::endl;
+        std::cout << "    -rrrn  Repair regions by assigning them to a random neighbour" << std::endl;
+        std::cout << "    -rpl filename  Repair by assigning according to the priority list in this file" << std::endl;
+        std::cout << "    -rem filename  Repair for edge matching according to the priority list in this file" << std::endl;
+        std::cout << "    -ot filename  Output the triangulation to this file" << std::endl;
+        std::cout << "    -otwp filename  Output the triangulation to this file, including the input file where each triangle came from" << std::endl;
+        std::cout << "    -rp  Reconstruct polygons" << std::endl;
+        std::cout << "    -o filename  Output the reconstructed polygons in this file" << std::endl;
+        std::cout << "    -owp filename  Output the reconstructed polygons in this file, including the input file where they came from" << std::endl;
+        std::cout << "    -pi  Print triangulation information" << std::endl;
+        return 0;
+    }
+    
     for (int argNum = 1; argNum < argc; ++argNum) {
         
         // Process in order
@@ -242,40 +276,6 @@ int main(int argc, const char *argv[]) {
         // Print triangulation information
         else if (strcmp(argv[argNum], "-pi") == 0) {
             if (processInOrder) pp.printInfo();
-        }
-        
-        // Process help argument
-        else if (strcmp(argv[argNum], "-h") == 0 || strcmp(argv[argNum], "--help") == 0) {
-            std::cout << "=== pprepair Help ===" << std::endl;
-            std::cout << "    Simple:   pprepair [options]" << std::endl;
-            std::cout << "    Advanced: pprepair -p [processing steps in order]" << std::endl;
-            std::cout << "    Example:  ./pprepair -i \"myInput.shp\" -o \"myOutput.shp\" -fix" << std::endl;
-            std::cout << "== Basic options ==" << std::endl;
-            std::cout << "    -i filename [schemaindex] Add this file to the triangulation using this schema index" << std::endl;
-            std::cout << "    -o filename  Output the reconstructed polygons in this file" << std::endl;
-            std::cout << "    -fix  Automagically repair (same as -rrlb -rrrn)" << std::endl;
-            std::cout << "== Possible steps (in usual processing order) ==" << std::endl;
-            std::cout << "    -i filename [schemaindex] Add this file to the triangulation using this schema index" << std::endl;
-            std::cout << "    -t  Tag the triangulation" << std::endl;
-            std::cout << "    -otnt filename  Output the tagged triangulation with the number of tags to this file" << std::endl;
-            std::cout << "    -vh  Consider holes as valid" << std::endl;
-            std::cout << "    -sr ratio  Split invalid regions at triangles with a higher aspect ratio than this" << std::endl;
-            std::cout << "    -v  Validate" << std::endl;
-            std::cout << "    -au  Allow removing invalid regions (where convenient)" << std::endl;
-            std::cout << "    -rtnn  Repair triangles by assigning them to the neighbour present on most sides" << std::endl;
-            std::cout << "    -rtam  Repair triangles by assigning them to a neighbour present on at least 2 sides" << std::endl;
-            std::cout << "    -rtlb  Repair triangles by assigning them to the neighbour present along the longest part of their boundary" << std::endl;
-            std::cout << "    -rrlb  Repair regions by assigning them to the neighbour present along the longest part of their boundary" << std::endl;
-            std::cout << "    -rrrn  Repair regions by assigning them to a random neighbour" << std::endl;
-            std::cout << "    -rpl filename  Repair by assigning according to the priority list in this file" << std::endl;
-            std::cout << "    -rem filename  Repair for edge matching according to the priority list in this file" << std::endl;
-            std::cout << "    -ot filename  Output the triangulation to this file" << std::endl;
-            std::cout << "    -otwp filename  Output the triangulation to this file, including the input file where each triangle came from" << std::endl;
-            std::cout << "    -rp  Reconstruct polygons" << std::endl;
-            std::cout << "    -o filename  Output the reconstructed polygons in this file" << std::endl;
-            std::cout << "    -owp filename  Output the reconstructed polygons in this file, including the input file where they came from" << std::endl;
-            std::cout << "    -pi  Print triangulation information" << std::endl;
-            return 0;
         }
         
         // Unrecognised option
