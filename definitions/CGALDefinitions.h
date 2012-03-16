@@ -54,6 +54,7 @@
 // VertexInfo for SAFE
 #ifdef USE_VERTEX_INFO
 #include <VertexInfo.h>
+typedef std::vector<VertexInfo> RingInfo;
 #endif
 
 // Kernel
@@ -95,9 +96,78 @@ typedef CGAL::Exact_intersections_tag IT;
 typedef Triangulation::Point Point;
 typedef Triangulation::Segment Segment;
 typedef CGAL::Polygon_2<K> Ring;
-typedef CGAL::Polygon_with_holes_2<K> Polygon;
 
 // Non CGAL types
 typedef std::vector<std::pair<std::vector<Triangulation::Vertex_handle>, std::vector<std::vector<Triangulation::Vertex_handle> > > > TaggingVector;
+
+// Polygon type to avoid CGAL's
+class Polygon {
+public:
+    typedef std::vector<Ring>::const_iterator Hole_const_iterator;
+    #ifdef USE_VERTEX_INFO
+        typedef std::vector<RingInfo>::const_iterator HoleInfo_const_iterator;
+    #endif
+    
+    Polygon(const Ring &outer, const std::vector<Ring>::iterator innerBegin, const std::vector<Ring>::iterator innerEnd) {
+        outerRing = outer;
+        innerRings = std::vector<Ring>(innerBegin, innerEnd);
+        #ifdef USE_VERTEX_INFO
+            for (size_t i = 0; i < oRing.size(); ++i) outerRingInfo.push_back(VertexInfo());
+            for (size_t i=0; i < innerRings.size(); i++) {
+                innerRingsInfo.push_back(RingInfo());
+                for (size_t j=0; j < innerRings[i].size(); j++) innerRingsInfo.back().push_back(VertexInfo());
+            }
+        #endif
+    }
+    
+    #ifdef USE_VERTEX_INFO
+        Polygon(const Ring oRing, const std::vector<Ring> iRings, const RingInfo oRingInfo, const std::vector<RingInfo> iRingsInfo) :
+        outerRing(oRing), innerRings(iRings), outerRingInfo(oRingInfo), innerRingsInfo(iRingsInfo) {
+        }
+        
+        
+        Polygon(const Ring oRing, const std::vector<Ring> iRings) :
+        outerRing(oRing), innerRings(iRings) {
+            for (size_t i=0; i < oRing.size(); i++) outerRingInfo.push_back(VertexInfo());
+            for (size_t i=0; i < innerRings.size(); i++) {
+                innerRingsInfo.push_back(RingInfo());
+                for (size_t j=0; j < innerRings[i].size(); j++) innerRingsInfo.back().push_back(VertexInfo());
+            }
+        }
+    #endif
+    
+    const Ring &outer_boundary() const {
+        return outerRing;
+    }
+    
+    Hole_const_iterator holes_begin() const {
+        return innerRings.begin();
+    }
+    
+    Hole_const_iterator holes_end() const {
+        return innerRings.end();
+    }
+    
+    #ifdef USE_VERTEX_INFO
+        const RingInfo& outer_boundary_info() const {
+            return outerRingInfo;
+        }
+        
+        std::vector<RingInfo>::const_iterator holes_info_begin() const {
+            return innerRingsInfo.begin();
+        }
+        
+        std::vector<RingInfo>::const_iterator holes_info_end() const {
+            return innerRingsInfo.end();
+        }
+    #endif
+private:
+    Ring outerRing;
+    std::vector<Ring> innerRings;
+    #ifdef USE_VERTEX_INFO
+        RingInfo outerRingInfo;
+        std::vector<RingInfo> innerRingsInfo;
+    #endif
+};
 
 #endif
