@@ -1,2 +1,9 @@
-
+# Metadata
 .DS_Store
+
+# OS specific Makefile
+Makefile
+
+# Compiled sources
+*.o
+pprepair
