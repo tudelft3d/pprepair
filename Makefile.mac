@@ -9,7 +9,7 @@ LIBS=/Library/Frameworks/GDAL.framework/Versions/1.9/unix/lib/libgdal.dylib /usr
 LDFLAGS=-O3 -DNDEBUG -Wl,-search_paths_first -headerpad_max_install_names $(LIBS)
 
 
-all: main
+all: pprepair
 
 PolygonHandle.o: PolygonHandle.cpp
 	$(CC) $(CFLAGS) -c $^
@@ -26,7 +26,7 @@ PlanarPartition.o: PlanarPartition.cpp
 pprepair.o: pprepair.cpp
 	$(CC) $(CFLAGS) -c $^
 
-main: PolygonHandle.o FaceInfo.o IOWorker.o PlanarPartition.o pprepair.o 
+pprepair: PolygonHandle.o FaceInfo.o IOWorker.o PlanarPartition.o pprepair.o 
 	$(CC) $(LDFLAGS) $^ -o pprepair
 
 clean:
