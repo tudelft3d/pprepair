@@ -1,6 +1,9 @@
 # Metadata
 .DS_Store
 
+# Subversion
+.svn
+
 # OS specific Makefile
 Makefile
 
