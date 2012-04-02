@@ -298,7 +298,7 @@ int main(int argc, const char *argv[]) {
         pp.tagTriangulation();
         
         // Print info
-        std::cout << "Before repair:" << std::endl;
+        std::cout << "Input triangulation:" << std::endl;
         pp.printInfo();
         
         // Output triangulation with number of tags
@@ -311,6 +311,7 @@ int main(int argc, const char *argv[]) {
         if (splitRegions) pp.splitRegions(splitRegionsRatio);
         
         // Repair
+        bool outputResults = false;
         for (std::list<std::pair<RepairMethod, std::string> >::iterator currentFile = repairMethods.begin(); currentFile != repairMethods.end(); ++currentFile) {
             switch (currentFile->first) {
                 case VALIDATE_ONLY:
@@ -319,30 +320,37 @@ int main(int argc, const char *argv[]) {
                     
                 case NUMBER_OF_NEIGHBOURS:
                     pp.repairTrianglesByNumberOfNeighbours(alsoUniverse);
+                    outputResults = true;
                     break;
                     
                 case ABSOLUTE_MAJORITY:
                     pp.repairTrianglesByAbsoluteMajority(alsoUniverse);
+                    outputResults = true;
                     break;
                     
                 case LONGEST_BOUNDARY:
                     pp.repairTrianglesByLongestBoundary(alsoUniverse);
+                    outputResults = true;
                     break;
                     
                 case REGIONS_BY_LONGEST_BOUNDARY:
                     pp.repairRegionsByLongestBoundary(alsoUniverse);
+                    outputResults = true;
                     break;
                     
                 case REGIONS_BY_RANDOM_NEIGHBOUR:
                     pp.repairRegionsByRandomNeighbour(alsoUniverse);
+                    outputResults = true;
                     break;
                     
                 case PRIORITY_LIST:
                     pp.repairByPriorityList(currentFile->second.c_str());
+                    outputResults = true;
                     break;
                     
                 case PRIORITY_LIST_EDGEMATCHING:
                     pp.repairEdgeMatching(currentFile->second.c_str());
+                    outputResults = true;
                     break;
                     
                 default:
@@ -351,8 +359,8 @@ int main(int argc, const char *argv[]) {
         }
         
         // Print info
-        if (repairMethods.size() > 0) {
-            std::cout << "After repair:" << std::endl;
+        if (outputResults) {
+            std::cout << "Repaired triangulation:" << std::endl;
             pp.printInfo();
         }
         
