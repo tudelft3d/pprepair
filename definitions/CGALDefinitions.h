@@ -30,8 +30,8 @@
 #define CGALDEFINITIONS_H
 
 // Compile-time options
-//#define EXACT_CONSTRUCTIONS
-//#define TRIANGULATION_HIERARCHY
+//#define EXACT_CONSTRUCTIONS       // Exact arithmetic: memory and processing time increase
+//#define TRIANGULATION_HIERARCHY   // Faster point location algorithm: more memory
 
 // CGAL kernel
 #ifdef EXACT_CONSTRUCTIONS
@@ -99,7 +99,7 @@ typedef CGAL::Polygon_2<K> Ring;
 // Non CGAL types
 typedef std::vector<std::pair<std::vector<Triangulation::Vertex_handle>, std::vector<std::vector<Triangulation::Vertex_handle> > > > TaggingVector;
 
-// Polygon type to avoid CGAL's
+// Polygon type to avoid CGAL's Polygon_with_holes_2
 class Polygon {
 public:
     typedef std::vector<Ring>::const_iterator Hole_const_iterator;

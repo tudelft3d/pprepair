@@ -31,7 +31,7 @@
 
 #include "definitions/Definitions.h"
 
-// Generic content
+// Abstract class to store different types of attributes
 class Field {
 public:
     // Destructor
@@ -97,6 +97,7 @@ private:
 	int contents;
 };
 
+// Store a tag
 class PolygonHandle {
 public:
 	// Constructors and destructors
@@ -128,6 +129,7 @@ protected:
 	std::vector<Field *> fields;
 };
 
+// Trick to save memory when multiple tags are not present
 class MultiPolygonHandle : public PolygonHandle {
 public:
 	// Constructor. No need to start with less than two
