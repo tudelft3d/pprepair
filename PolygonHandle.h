@@ -29,7 +29,7 @@
 #ifndef POLYGONHANDLE_H
 #define POLYGONHANDLE_H
 
-#include "definitions/Definitions.h"
+#include "definitions/definitions.h"
 
 // Abstract class to store different types of attributes
 class Field {
