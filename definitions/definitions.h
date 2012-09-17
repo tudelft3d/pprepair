@@ -40,5 +40,6 @@
 // STL containers
 #include <vector>
 #include <list>
+#include <algorithm>
 
 #endif
