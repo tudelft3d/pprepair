@@ -331,7 +331,7 @@ bool PlanarPartition::matchSchemata() {
 	return returnValue;
 }
 
-bool PlanarPartition::reconstructPolygons() {
+bool PlanarPartition::reconstructPolygons(bool removeVertices) {
     
     if (state < TAGGED) {
 		std::cout << "Triangulation not tagged. Cannot reconstruct!" << std::endl;
@@ -345,6 +345,8 @@ bool PlanarPartition::reconstructPolygons() {
 	std::cout << "Reconstructing polygons (geometry)..." << std::endl;
 	time_t thisTime = time(NULL);
     
+    io.removeConstraints(triangulation);
+    if (removeVertices) io.removeVertices(triangulation);
     bool returnValue = io.reconstructPolygons(triangulation, outputPolygons);
     
     // Mark as reconstructed

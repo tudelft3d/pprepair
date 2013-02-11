@@ -47,7 +47,7 @@ int main(int argc, const char *argv[]) {
     
     std::list<std::pair<std::string, int> > inputFiles;
     std::string outputFile, outputFileWithProvenance, taggedTriangulationOutputFile, triangulationOutputFile, triangulationOutputFileWithProvenance;
-    bool makeHolesValid = false, splitRegions = false, alsoUniverse = false;
+    bool makeHolesValid = false, splitRegions = false, alsoUniverse = false, matchSchemata = false, bigData = false;
     double splitRegionsRatio;
     std::list<std::pair<RepairMethod, std::string> > repairMethods;
     
@@ -61,6 +61,7 @@ int main(int argc, const char *argv[]) {
         std::cout << "    -i filename [schemaindex] Add this file to the triangulation using this schema index" << std::endl;
         std::cout << "    -o filename  Output the reconstructed polygons in this file" << std::endl;
         std::cout << "    -fix  Automagically repair (same as -rrlb -rrrn)" << std::endl;
+        std::cout << "    -d Dissolve the boundaries between regions with the same tag according to the schema index" << std::endl;
         std::cout << "== Possible steps (in usual processing order) ==" << std::endl;
         std::cout << "    -i filename [schemaindex] Add this file to the triangulation using this schema index" << std::endl;
         std::cout << "    -t  Tag the triangulation" << std::endl;
@@ -78,6 +79,7 @@ int main(int argc, const char *argv[]) {
         std::cout << "    -rem filename  Repair for edge matching according to the priority list in this file" << std::endl;
         std::cout << "    -ot filename  Output the triangulation to this file" << std::endl;
         std::cout << "    -otwp filename  Output the triangulation to this file, including the input file where each triangle came from" << std::endl;
+        std::cout << "    -bd Removes unnecessary vertices before reconstruction to support larger data sets (try if you get a segmentation fault)" << std::endl;
         std::cout << "    -rp  Reconstruct polygons" << std::endl;
         std::cout << "    -o filename  Output the reconstructed polygons in this file" << std::endl;
         std::cout << "    -owp filename  Output the reconstructed polygons in this file, including the input file where they came from" << std::endl;
@@ -244,9 +246,20 @@ int main(int argc, const char *argv[]) {
             }
         }
         
+        // Match schemata
+        else if (strcmp(argv[argNum], "-d") == 0) {
+            if (processInOrder) pp.matchSchemata();
+            else matchSchemata = true;
+        }
+        
+        // Match schemata
+        else if (strcmp(argv[argNum], "-bd") == 0) {
+            bigData = true;
+        }
+        
         // Reconstruct polygons
         else if (strcmp(argv[argNum], "-rp") == 0) {
-            if (processInOrder) pp.reconstructPolygons();
+            if (processInOrder) pp.reconstructPolygons(bigData);
         }
         
         // Output
@@ -370,8 +383,11 @@ int main(int argc, const char *argv[]) {
         // Output the triangulation with provenance
         if (triangulationOutputFileWithProvenance.size() > 0) pp.exportTriangulation(triangulationOutputFileWithProvenance.c_str(), false, true, true);
         
+        // Match schemata
+        if (matchSchemata) pp.matchSchemata();
+        
         // Reconstruct polygons
-        if (outputFile.size() > 0 || outputFileWithProvenance.size() > 0) pp.reconstructPolygons();
+        if (outputFile.size() > 0 || outputFileWithProvenance.size() > 0) pp.reconstructPolygons(bigData);
         
         // Output
         if (outputFile.size() > 0) pp.exportPolygons(outputFile.c_str(), false);

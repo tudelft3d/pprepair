@@ -50,6 +50,8 @@ public:
 	bool repairByPriorityList(Triangulation &triangulation, const char *file);
     bool repairEdgeMatching(Triangulation &triangulation, const char *file);
     bool matchSchemata(Triangulation &triangulation);
+    void removeConstraints(Triangulation &triangulation);
+    void removeVertices(Triangulation &triangulation);
     bool reconstructPolygons(Triangulation &triangulation, std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons);
     bool exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons, const char *file, bool withProvenance);
     bool exportTriangulation(Triangulation &t, const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);

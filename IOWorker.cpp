@@ -1054,15 +1054,65 @@ bool IOWorker::matchSchemata(Triangulation &triangulation) {
 	return true;
 }
 
-bool IOWorker::reconstructPolygons(Triangulation &triangulation, std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons) {
-	
+void IOWorker::removeConstraints(Triangulation &triangulation) {
 	// Remove constrained edges that have the same polygon on both sides
+    unsigned long long int constrainedEdgesRemoved = 0;
     for (Triangulation::All_edges_iterator currentEdge = triangulation.all_edges_begin(); currentEdge != triangulation.all_edges_end(); ++currentEdge) {
+        if (!triangulation.is_constrained(*currentEdge)) continue;
         if (currentEdge->first->info().getOneTag() == currentEdge->first->neighbor(currentEdge->second)->info().getOneTag()) {
             triangulation.remove_constrained_edge(currentEdge->first, currentEdge->second);
-        } 
-    }
-	
+            ++constrainedEdgesRemoved;
+        }
+    } std::cout << "\tRemoved " << constrainedEdgesRemoved << " constrained edges" << std::endl;
+}
+
+void IOWorker::removeVertices(Triangulation &triangulation) {
+    // Remove unnecessary vertices completely surrounded by the same polygon
+    // TODO: This can be optimised
+    
+    std::cout << "\tBefore: " << triangulation.number_of_faces() << " triangles in the triangulation" << std::endl;
+    
+    unsigned long long int surroundedVerticesRemoved = 0;
+    Triangulation::Finite_vertices_iterator currentVertex = triangulation.finite_vertices_begin();
+    while (currentVertex != triangulation.finite_vertices_end()) {
+        if (triangulation.are_there_incident_constraints(currentVertex)) {
+            ++currentVertex;
+            continue;
+        }
+        
+        Triangulation::Face_circulator firstFace = triangulation.incident_faces(currentVertex), currentFace = firstFace;
+        ++currentFace;
+        bool allEqual = true;
+        while (currentFace != firstFace) {
+            if (currentFace->info().getOneTag() != firstFace->info().getOneTag()) {
+                allEqual = false;
+                break;
+            } ++currentFace;
+        }
+        
+        if (allEqual) {
+            Triangulation::Finite_vertices_iterator vertexToRemove = currentVertex;
+            ++currentVertex;
+            
+            Point location = vertexToRemove->point();
+            //Triangulation::Face_handle approximateLocation;
+            PolygonHandle *tag = triangulation.incident_faces(vertexToRemove)->info().getOneTag();
+            triangulation.remove(vertexToRemove);
+            std::stack<Triangulation::Face_handle> stack;
+            Triangulation::Face_handle emptyFace = triangulation.locate(location);
+            stack.push(emptyFace);
+            tagStack(stack, tag);
+            
+            ++surroundedVerticesRemoved;
+        } else {
+            ++currentVertex;
+        }
+    } std::cout << "\tRemoved " << surroundedVerticesRemoved << " surrounded vertices" << std::endl;
+    
+    std::cout << "\tAfter: " << triangulation.number_of_faces() << " triangles in the triangulation" << std::endl;
+}
+
+bool IOWorker::reconstructPolygons(Triangulation &triangulation, std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons) {
 	for (Triangulation::Finite_faces_iterator seedingFace = triangulation.finite_faces_begin(); seedingFace != triangulation.finite_faces_end(); ++seedingFace) {
         PolygonHandle *currentTag = seedingFace->info().getOneTag();
         if (currentTag == NULL) continue;
@@ -1261,6 +1311,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 	for (std::vector<std::pair<PolygonHandle *, Polygon> >::iterator currentPolygon = outputPolygons.begin(); currentPolygon != outputPolygons.end(); ++currentPolygon) {
 		OGRPolygon polygon;
 		OGRLinearRing outerRing;
+        if (currentPolygon->second.outer_boundary().size() < 1) continue;
 		for (Ring::Vertex_iterator currentVertex = currentPolygon->second.outer_boundary().vertices_begin();
 			 currentVertex != currentPolygon->second.outer_boundary().vertices_end();
 			 ++currentVertex) {

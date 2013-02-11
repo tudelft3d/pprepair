@@ -57,7 +57,7 @@ public:
     
     bool matchSchemata();
     
-    bool reconstructPolygons();
+    bool reconstructPolygons(bool removeVertices = false);
     
     bool exportPolygons(const char *file, bool withProvenance);
     bool exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);
