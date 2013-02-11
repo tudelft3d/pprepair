@@ -32,4 +32,4 @@ This can be due to several reasons. 99% of the time it can be solved by:
   - If your data set has very large polygons, try passing the -bd flag
   - If your data set has points that are **very** close together, try uncommenting line 34 in definitions/CGALDefinitions.h
 
-If your problem persists, please report it [[https://github.com/tudelft-gist/pprepair/issues?state=open|here]].
+If your problem persists, please report it [here](https://github.com/tudelft-gist/pprepair/issues?state=open).
