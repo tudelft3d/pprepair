@@ -89,8 +89,10 @@ int main(int argc, const char *argv[]) {
     
     for (int argNum = 1; argNum < argc; ++argNum) {
         
+        // IMPORTANT: When adding new options, check that their order doesn't cause parsing conflicts!!!
+        
         // Process in order
-        if (strcmp(argv[argNum], "-p") == 0) {
+        if (strcmp(argv[argNum], "-p") == 0 && strcmp(argv[argNum], "-pi") != 0) {
             processInOrder = true;
         }
         
@@ -222,18 +224,6 @@ int main(int argc, const char *argv[]) {
             }
         }
         
-        // Output triangulation
-        else if (strcmp(argv[argNum], "-ot") == 0) {
-            if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
-                ++argNum;
-                if (processInOrder) pp.exportTriangulation(argv[argNum], false, true, false);
-                else triangulationOutputFile = argv[argNum];
-            } else {
-                std::cerr << "Error: Missing filename argument for -ot";
-                return 1;
-            }
-        }
-        
         // Output triangulation with provenance
         else if (strcmp(argv[argNum], "-otwp") == 0) {
             if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
@@ -245,6 +235,18 @@ int main(int argc, const char *argv[]) {
                 return 1;
             }
         }
+        
+        // Output triangulation
+        else if (strcmp(argv[argNum], "-ot") == 0) {
+            if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
+                ++argNum;
+                if (processInOrder) pp.exportTriangulation(argv[argNum], false, true, false);
+                else triangulationOutputFile = argv[argNum];
+            } else {
+                std::cerr << "Error: Missing filename argument for -ot";
+                return 1;
+            }
+        }        
         
         // Match schemata
         else if (strcmp(argv[argNum], "-d") == 0) {
@@ -262,24 +264,24 @@ int main(int argc, const char *argv[]) {
             if (processInOrder) pp.reconstructPolygons(bigData);
         }
         
-        // Output
-        else if (strcmp(argv[argNum], "-o") == 0) {
-            if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
-                ++argNum;
-                if (processInOrder) pp.exportPolygons(argv[argNum], false);
-                else outputFile = argv[argNum];
-            } else {
-                std::cerr << "Error: Missing filename argument for -o";
-                return 1;
-            }
-        }
-        
         // Output with provenance
         else if (strcmp(argv[argNum], "-owp") == 0) {
             if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
                 ++argNum;
                 if (processInOrder) pp.exportPolygons(argv[argNum], true);
                 else outputFileWithProvenance = argv[argNum];
+            } else {
+                std::cerr << "Error: Missing filename argument for -o";
+                return 1;
+            }
+        }
+        
+        // Output
+        else if (strcmp(argv[argNum], "-o") == 0) {
+            if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
+                ++argNum;
+                if (processInOrder) pp.exportPolygons(argv[argNum], false);
+                else outputFile = argv[argNum];
             } else {
                 std::cerr << "Error: Missing filename argument for -o";
                 return 1;
