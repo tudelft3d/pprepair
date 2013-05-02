@@ -38,6 +38,6 @@ If you are interested in getting a commercial license for pprepair, please conta
 
 This can be due to several reasons. 99% of the time it can be solved by:
   - If your data set has very large polygons, try passing the -bd flag
-  - If your data set has points that are **very** close together, try uncommenting line 34 in definitions/CGALDefinitions.h
+  - If your data set has points that are **very** close together, try uncommenting line 26 in definitions/CGALDefinitions.h (#define EXACT_CONSTRUCTIONS)
 
 If your problem persists, please report it [here](https://github.com/tudelft-gist/pprepair/issues?state=open).
