@@ -37,7 +37,7 @@ PlanarPartition::PlanarPartition() {
 	
 	// std::cout precision (for debugging)
 	std::cout.setf(std::ios::fixed,std::ios::floatfield);
-	std::cout.precision(8);
+	std::cout.precision(6);
 }
 
 PlanarPartition::~PlanarPartition() {

@@ -1537,10 +1537,12 @@ std::vector<Ring *> IOWorker::splitRing(Ring &ring) {
         // Remove identical degenerate edges
 		if (ringTriangulation.is_edge(source, target, correspondingFace, correspondingVertex)) {
 			if (ringTriangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(correspondingFace, correspondingVertex))) {
-				ringTriangulation.remove_constrained_edge(correspondingFace, correspondingVertex);
+                //std::cout << "Removing duplicate constraint <" << *source << ", " << *target << ">" << std::endl;
+				ringTriangulation.remove_constraint(source, target);
 				continue;
 			}
-		} ringTriangulation.insert_constraint(source, target);
+		} //std::cout << "Inserting constraint <" << *source << ", " << *target << ">" << std::endl;
+        ringTriangulation.insert_constraint(source, target);
         startingSearchFaceInRing = ringTriangulation.incident_faces(target);
 	}
 	
@@ -1551,12 +1553,19 @@ std::vector<Ring *> IOWorker::splitRing(Ring &ring) {
 	for (Triangulation::Subconstraint_iterator currentEdge = ringTriangulation.subconstraints_begin();
 		 currentEdge != ringTriangulation.subconstraints_end();
 		 ++currentEdge) {
+        //std::cout << "Checking subconstraint: <" << *(currentEdge->first.first) << ", " << *(currentEdge->first.second) << ">: " << ringTriangulation.number_of_enclosing_constraints(currentEdge->first.first, currentEdge->first.second) << " enclosing constraints." << std::endl;
 		// Subconstraint_iterator has a weird return value...
 		if (ringTriangulation.number_of_enclosing_constraints(currentEdge->first.first, currentEdge->first.second) % 2 == 0) {
 			Triangulation::Face_handle f;
 			int i;
 			ringTriangulation.is_edge(currentEdge->first.first, currentEdge->first.second, f, i);
-			ringTriangulation.remove_constrained_edge(f, i);
+            if (ringTriangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(f, i))) {
+                //std::cout << "Removing constraint..." << std::endl;
+                ringTriangulation.remove_constraint(currentEdge->first.first, currentEdge->first.second);
+            } else {
+                //std::cout << "Adding constraint..." << std::endl;
+                ringTriangulation.insert_constraint(currentEdge->first.first, currentEdge->first.second);
+            }
 		}
 	}
 	
@@ -1790,9 +1799,12 @@ void IOWorker::copyFields(OGRFeature *ogrfeature, PolygonHandle *handle) {
 }
 
 void IOWorker::tagStack(std::stack<Triangulation::Face_handle> &positiveStack, std::stack<Triangulation::Face_handle> &negativeStack, PolygonHandle *positiveHandle, PolygonHandle *negativeHandle) {
+    //std::cout << "tagStack() Infinite vertex at: "  << std::endl;
 	while (!positiveStack.empty() || !negativeStack.empty()) {
+        //std::cout << "positiveStack: " << positiveStack.size() << " negativeStack: " << negativeStack.size() << std::endl;
 		if (positiveStack.empty()) {
 			Triangulation::Face_handle currentFace = negativeStack.top();
+            //std::cout << "Triangle: <" << *(currentFace->vertex(0)) << ", " << *(currentFace->vertex(1)) << ", " << *(currentFace->vertex(2)) << ">" << std::endl;
 			negativeStack.pop();
 			currentFace->info().setTags(negativeHandle);
 			if (currentFace->is_constrained(0)) {
@@ -1828,6 +1840,7 @@ void IOWorker::tagStack(std::stack<Triangulation::Face_handle> &positiveStack, s
 			}
 		} else {
 			Triangulation::Face_handle currentFace = positiveStack.top();
+            //std::cout << "Triangle: <" << *(currentFace->vertex(0)) << ", " << *(currentFace->vertex(1)) << ", " << *(currentFace->vertex(2)) << ">" << std::endl;
 			positiveStack.pop();
 			currentFace->info().setTags(positiveHandle);
 			if (currentFace->is_constrained(0)) {
