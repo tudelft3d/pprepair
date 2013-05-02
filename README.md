@@ -26,6 +26,14 @@ To compile pprepair, you first need to install the free libraries [CGAL](http://
 You can get all the options simply by running pprepair with no arguments
     $ ./pprepair
 
+## Can I use pprepair in my organisation? What is the license of pprepair?
+
+Following in CGAL's footsteps, pprepair is available under a dual license scheme, GPLv3 and commercial. If you choose to use pprepair under the free-of-charge GPLv3 license, you have to comply with its terms. If these are not suitable for you, you have to buy a commercial license.
+
+The [GPLv3](http://www.gnu.org/copyleft/gpl.html) allows you to use, copy and modify the software freely. However, if you incorporate pprepair in your software, you must distribute the source code of your software, as well as any modifications made to pprepair, under the GPLv3 as well.
+
+If you are interested in getting a commercial license for pprepair, please contact [Ken Arroyo Ohori](mailto:g.a.k.arroyoohori@tudelft.nl).
+
 ## Help! pprepair is crashing
 
 This can be due to several reasons. 99% of the time it can be solved by:
