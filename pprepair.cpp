@@ -33,7 +33,7 @@ enum RepairMethod {
 };
 
 int main(int argc, const char *argv[]) {
-
+    
     time_t startTime = time(NULL);
     PlanarPartition pp;
     bool processInOrder = false;
@@ -239,7 +239,7 @@ int main(int argc, const char *argv[]) {
                 std::cerr << "Error: Missing filename argument for -ot";
                 return 1;
             }
-        }        
+        }
         
         // Match schemata
         else if (strcmp(argv[argNum], "-d") == 0) {

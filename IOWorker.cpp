@@ -99,7 +99,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
 					
 					// Get outer ring
 					for (int currentPoint = 0; currentPoint < geometry->getExteriorRing()->getNumPoints(); currentPoint++)
-						outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint), 
+						outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint),
 															  geometry->getExteriorRing()->getY(currentPoint)));
 					
 					// Get inner rings
@@ -107,7 +107,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
 					for (int currentRing = 0; currentRing < geometry->getNumInteriorRings(); currentRing++) {
 						innerRingsList.push_back(std::list<Point>());
 						for (int currentPoint = 0; currentPoint < geometry->getInteriorRing(currentRing)->getNumPoints(); currentPoint++) {
-							innerRingsList.back().push_back(Point(geometry->getInteriorRing(currentRing)->getX(currentPoint), 
+							innerRingsList.back().push_back(Point(geometry->getInteriorRing(currentRing)->getX(currentPoint),
 																  geometry->getInteriorRing(currentRing)->getY(currentPoint)));
 						}
 					} break;
@@ -124,7 +124,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
 						
 						// Get outer ring
 						for (int currentPoint = 0; currentPoint < thisGeometry->getExteriorRing()->getNumPoints(); currentPoint++)
-							outerRingsList.back().push_back(Point(thisGeometry->getExteriorRing()->getX(currentPoint), 
+							outerRingsList.back().push_back(Point(thisGeometry->getExteriorRing()->getX(currentPoint),
 																  thisGeometry->getExteriorRing()->getY(currentPoint)));
 						
 						// Get inner rings
@@ -146,7 +146,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
 					continue;
 					break;
                     
-                // TODO: Implement other cases: points, lines, containers with multiple features, etc.
+                    // TODO: Implement other cases: points, lines, containers with multiple features, etc.
 			}
 			
 			// STEP 2: Check validity of individual polygons
@@ -218,7 +218,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
                         outerRings[currentRings].reverse_orientation();
                     } outerRingsToBuild.push_back(new Ring(outerRings[currentRings]));
                     outerRings[currentRings].clear();
-                } 
+                }
             }
             
             // Get inner rings
@@ -245,7 +245,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
             // Make space for inner rings
             for (std::vector<Ring *>::iterator currentRing = outerRingsToBuild.begin(); currentRing != outerRingsToBuild.end(); ++currentRing) {
                 innerRingsToBuild.push_back(std::vector<Ring>());
-            } 
+            }
             
             // Put inner rings into the correct outer ring (and likely other ones). Incorrectly nested rings are found here.
             if (outerRingsToBuild.size() == 0) {
@@ -254,7 +254,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
                 for (std::vector<Ring *>::iterator currentRing = innerRingsToClassify.begin(); currentRing != innerRingsToClassify.end(); ++currentRing) {
                     delete *currentRing;
                 }
-            } 
+            }
             
             // Now check them and put them in place
             else if (innerRingsToClassify.size() > 0) {
@@ -281,8 +281,8 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
 				edgesToTag.push_back(std::pair<std::vector<Triangulation::Vertex_handle>, std::vector<std::vector<Triangulation::Vertex_handle> > >());
 				
 				// Insert edges into the triangulation and edges vector
-				for (Ring::Edge_const_iterator currentEdge = currentPolygon->outer_boundary().edges_begin(); 
-					 currentEdge != currentPolygon->outer_boundary().edges_end(); 
+				for (Ring::Edge_const_iterator currentEdge = currentPolygon->outer_boundary().edges_begin();
+					 currentEdge != currentPolygon->outer_boundary().edges_end();
 					 ++currentEdge) {
 					Triangulation::Vertex_handle sourceVertex = triangulation.insert(currentEdge->source(), startingSearchFace);
                     startingSearchFace = triangulation.incident_faces(sourceVertex);
@@ -473,10 +473,10 @@ bool IOWorker::repairTrianglesByAbsoluteMajority(Triangulation &triangulation, b
 	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
 		if (!currentFace->info().hasOneTag()) {
 			if (currentFace->neighbor(0)->info().hasOneTag() && currentFace->neighbor(1)->info().hasOneTag() &&
-				currentFace->neighbor(0)->info().getTags() == currentFace->neighbor(1)->info().getTags() && 
+				currentFace->neighbor(0)->info().getTags() == currentFace->neighbor(1)->info().getTags() &&
 				(currentFace->info().hasTag(currentFace->neighbor(0)->info().getTags()) || currentFace->info().hasNoTags())) {
 				if ((currentFace->neighbor(0)->info().getTags() != &universe &&
-                     currentFace->neighbor(0)->info().getTags() != NULL) || 
+                     currentFace->neighbor(0)->info().getTags() != NULL) ||
 					alsoUniverse) {
 					facesToRepair.push_back(std::pair<Triangulation::Face_handle, Triangulation::Face_handle>(currentFace, currentFace->neighbor(0)));
 				}
@@ -484,7 +484,7 @@ bool IOWorker::repairTrianglesByAbsoluteMajority(Triangulation &triangulation, b
 					   currentFace->neighbor(0)->info().getTags() == currentFace->neighbor(2)->info().getTags() &&
 					   (currentFace->info().hasTag(currentFace->neighbor(2)->info().getTags()) || currentFace->info().hasNoTags())) {
 				if ((currentFace->neighbor(2)->info().getTags() != &universe &&
-                     currentFace->neighbor(2)->info().getTags() != NULL) || 
+                     currentFace->neighbor(2)->info().getTags() != NULL) ||
 					alsoUniverse) {
 					facesToRepair.push_back(std::pair<Triangulation::Face_handle, Triangulation::Face_handle>(currentFace, currentFace->neighbor(2)));
 				}
@@ -492,7 +492,7 @@ bool IOWorker::repairTrianglesByAbsoluteMajority(Triangulation &triangulation, b
 					   currentFace->neighbor(1)->info().getTags() == currentFace->neighbor(2)->info().getTags() &&
 					   (currentFace->info().hasTag(currentFace->neighbor(1)->info().getTags()) || currentFace->info().hasNoTags())) {
 				if ((currentFace->neighbor(1)->info().getTags() != &universe &&
-                     currentFace->neighbor(1)->info().getTags() != NULL) || 
+                     currentFace->neighbor(1)->info().getTags() != NULL) ||
 					alsoUniverse) {
 					facesToRepair.push_back(std::pair<Triangulation::Face_handle, Triangulation::Face_handle>(currentFace, currentFace->neighbor(1)));
 				}
@@ -577,15 +577,15 @@ bool IOWorker::repairRegionsByLongestBoundary(Triangulation &triangulation, bool
 				Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
 				facesToProcess.pop();
 				processedFaces.insert(currentFaceInStack);
-				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) && 
+				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
 					!triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(0));
 					facesToProcess.push(currentFaceInStack->neighbor(0));
-				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) && 
+				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
                       !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(1));
 					facesToProcess.push(currentFaceInStack->neighbor(1));
-				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) && 
+				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
 					  !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(2));
 					facesToProcess.push(currentFaceInStack->neighbor(2));
@@ -655,15 +655,15 @@ bool IOWorker::repairRegionsByRandomNeighbour(Triangulation &triangulation, bool
 				Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
 				facesToProcess.pop();
 				processedFaces.insert(currentFaceInStack);
-				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) && 
+				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
 					!triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(0));
 					facesToProcess.push(currentFaceInStack->neighbor(0));
-				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) && 
+				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
 					  !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(1));
 					facesToProcess.push(currentFaceInStack->neighbor(1));
-				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) && 
+				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
 					  !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(2));
 					facesToProcess.push(currentFaceInStack->neighbor(2));
@@ -757,15 +757,15 @@ bool IOWorker::repairByPriorityList(Triangulation &triangulation, const char *fi
 				Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
 				facesToProcess.pop();
 				processedFaces.insert(currentFaceInStack);
-				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) && 
+				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
 					!triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(0));
 					facesToProcess.push(currentFaceInStack->neighbor(0));
-				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) && 
+				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
 					  !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(1));
 					facesToProcess.push(currentFaceInStack->neighbor(1));
-				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) && 
+				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
 					  !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(2));
 					facesToProcess.push(currentFaceInStack->neighbor(2));
@@ -917,15 +917,15 @@ bool IOWorker::repairEdgeMatching(Triangulation &triangulation, const char *file
 				Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
 				facesToProcess.pop();
 				processedFaces.insert(currentFaceInStack);
-				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) && 
+				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
 					!triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(0));
 					facesToProcess.push(currentFaceInStack->neighbor(0));
-				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) && 
+				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
 					  !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(1));
 					facesToProcess.push(currentFaceInStack->neighbor(1));
-				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) && 
+				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
 					  !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(2));
 					facesToProcess.push(currentFaceInStack->neighbor(2));
@@ -1031,7 +1031,7 @@ bool IOWorker::matchSchemata(Triangulation &triangulation) {
 	std::map<Field *, PolygonHandle *, FieldComparator> fieldMatch;
 	std::map<PolygonHandle *, PolygonHandle *> equivalencies;
 	
-	// Find equivalencies 
+	// Find equivalencies
 	for (std::vector<PolygonHandle *>::iterator currentPolygon = polygons.begin(); currentPolygon != polygons.end(); ++currentPolygon) {
 		if (fieldMatch.count((*currentPolygon)->getSchemaField()) == 0) {
 			fieldMatch[(*currentPolygon)->getSchemaField()] = *currentPolygon;
@@ -1479,7 +1479,7 @@ bool IOWorker::exportTriangulation(Triangulation &t, const char *file, bool with
 					break;
 			}
             
-		} 
+		}
 		
 		// Put geometry in
 		feature->SetGeometry(&polygon);
@@ -1596,7 +1596,7 @@ std::vector<Ring *> IOWorker::splitRing(Ring &ring) {
 			vertices->splice(vertices->end(), *l0);
 			delete l0;
 		} vertices->push_back(seedingFace->vertex(1));
-
+        
 		verticesList.push_back(vertices);
 	}
 	
@@ -1784,7 +1784,7 @@ void IOWorker::copyFields(OGRFeature *ogrfeature, PolygonHandle *handle) {
 				newField = new IntField(ogrfeature->GetFieldAsInteger(i));
 				break;
 			default:
-				std::cout << "\tError: Field type not supported. Skipped." << std::endl; 
+				std::cout << "\tError: Field type not supported. Skipped." << std::endl;
 				continue;
 				break;
 		} handle->addField(newField);
@@ -1885,7 +1885,7 @@ void IOWorker::tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHa
 		} if (!currentFace->neighbor(2)->info().hasTag(handle) && !currentFace->is_constrained(2)) {
 			currentFace->neighbor(2)->info().addTag(handle);
 			stack.push(currentFace->neighbor(2));
-		} 
+		}
 	}
 }
 
@@ -1925,7 +1925,7 @@ void IOWorker::addtoCount(std::map<PolygonHandle *, unsigned int> &count, Polygo
 	} else {
 		if (count.count(ph)) count[ph]++;
 		else count[ph] = 1;
-	} 
+	}
 }
 
 void IOWorker::addToLength(std::map<PolygonHandle *, double> &lengths, PolygonHandle *ph, double length) {
@@ -2064,9 +2064,9 @@ void IOWorker::insertTriangulationInfo(std::ostream &ostr, const Triangulation &
 		else if ((*currentFace).info().hasOneTag()) onetag++;
 		else multipletags++;
 	} total = onetag + multipletags + untagged;
-    ostr << "\tHoles:    " << untagged << " triangles (" << 100.0*untagged/total << " %)" << std::endl << 
-            "\tOk:       " << onetag << " triangles (" << 100.0*onetag/total << " %)" << std::endl << 
-            "\tOverlaps: " << multipletags << " triangles (" << 100.0*multipletags/total << " %)" << std::endl;
+    ostr << "\tHoles:    " << untagged << " triangles (" << 100.0*untagged/total << " %)" << std::endl <<
+    "\tOk:       " << onetag << " triangles (" << 100.0*onetag/total << " %)" << std::endl <<
+    "\tOverlaps: " << multipletags << " triangles (" << 100.0*multipletags/total << " %)" << std::endl;
 	
 	// Other info?
 }
