@@ -34,7 +34,7 @@ The [GPLv3](http://www.gnu.org/copyleft/gpl.html) allows you to use, copy and mo
 
 If you are interested in getting a commercial license for pprepair, please contact [Ken Arroyo Ohori](mailto:g.a.k.arroyoohori@tudelft.nl).
 
-## Help! pprepair is crashing
+## Help! pprepair is crashing or giving weird results
 
 This can be due to several reasons. 99% of the time it can be solved by:
   - If your data set has very large polygons, try passing the -bd flag

@@ -123,6 +123,7 @@ private:
     OGRFieldType schemaFieldType;
     std::vector<FieldDefinition *> fields;
     std::map<FieldDescriptor, unsigned int> fieldEquivalencies;
+    OGRSpatialReference spatialReference;
     
     // Internal special tags
 	PolygonHandle universe;

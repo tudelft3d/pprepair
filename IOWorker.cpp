@@ -45,6 +45,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
     for (int currentLayer = 0; currentLayer < numberOfLayers; currentLayer++) {
         OGRLayer *dataLayer = dataSource->GetLayer(currentLayer);
 		dataLayer->ResetReading();
+        spatialReference = *dataLayer->GetSpatialRef();
 		
 		unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
 		std::cout << "\tReading layer #" << currentLayer+1 << " (" << numberOfPolygons << " polygons)...";
@@ -350,7 +351,7 @@ bool IOWorker::tagTriangulation(Triangulation &triangulation, TaggingVector &edg
 						return false;
 					}
 				} previousVertex = currentVertex;
-				currentVertex++;
+				++currentVertex;
 				stack.push(currentFace);
 			}
 		}
@@ -1266,7 +1267,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 		return false;
 	}
 	
-	OGRLayer *layer = dataSource->CreateLayer("polygons", NULL, wkbPolygon, NULL);
+	OGRLayer *layer = dataSource->CreateLayer("polygons", &spatialReference, wkbPolygon, NULL);
 	if (layer == NULL) {
 		std::cout << "\tError: Could not create layer." << std::endl;
 		return false;
@@ -1383,7 +1384,7 @@ bool IOWorker::exportTriangulation(Triangulation &t, const char *file, bool with
 		return false;
 	}
 	
-	OGRLayer *layer = dataSource->CreateLayer("triangles", NULL, wkbPolygon, NULL);
+	OGRLayer *layer = dataSource->CreateLayer("triangles", &spatialReference, wkbPolygon, NULL);
 	if (layer == NULL) {
 		std::cout << "Could not create layer." << std::endl;
 		return false;
