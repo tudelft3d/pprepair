@@ -16,11 +16,12 @@ In short, pprepair creates a constrained triangulation of the polygons, tags eac
 
 ## How do I use pprepair?
 
-pprepair is a command-line program, which we provide as source code, together with makefiles for Mac and Linux. We plan on offering binaries (including for Windows) in the future.
+pprepair is a command-line program, which we provide as source code. It is very easy to compile it on Linux and Mac. We plan on offering binaries (including for Windows) in the future.
 
-To compile pprepair, you first need to install the free libraries [CGAL](http://www.cgal.org) and [OGR](http://www.gdal.org/ogr/). Afterwards run:
+To compile pprepair, you first need to install the free libraries [CGAL](http://www.cgal.org) and [GDAL](http://www.gdal.org). [CMake](http://www.cmake.org) is highly recommended. Afterwards run:
 
-    $ make -f filename
+    $ cmake .
+    $ make
     $ ./pprepair -i inputfile -o outputfile -fix
 
 You can get all the options simply by running pprepair with no arguments
