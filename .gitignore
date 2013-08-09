@@ -10,3 +10,7 @@ Makefile
 # Compiled sources
 *.o
 pprepair
+
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
