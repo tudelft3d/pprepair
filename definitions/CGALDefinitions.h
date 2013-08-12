@@ -23,7 +23,7 @@
 #define CGALDEFINITIONS_H
 
 // Compile-time options
-//#define EXACT_CONSTRUCTIONS       // Exact arithmetic: memory and processing time increase
+#define EXACT_CONSTRUCTIONS       // Exact arithmetic: memory and processing time increase
 //#define TRIANGULATION_HIERARCHY   // Faster point location algorithm: more memory
 
 // CGAL kernel
