@@ -11,6 +11,9 @@ Makefile
 *.o
 pprepair
 
+# xcode project
+*.xcodeproj
+
 CMakeFiles
 CMakeCache.txt
 cmake_install.cmake
