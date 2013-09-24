@@ -356,8 +356,41 @@ bool IOWorker::tagTriangulation(Triangulation &triangulation, TaggingVector &edg
 			}
 		}
 		
-		// Free memory for boundaries
+		// Free memory for outer boundary
 		edgesToTag[currentPolygon].first.clear();
+		
+		// Inner boundaries
+		// Should not be done unless we can ensure that holes are inside polygons, but keep it in mind...
+		for (unsigned int currentRing = 0; currentRing < edgesToTag[currentPolygon].second.size(); ++currentRing) {
+            
+            for (unsigned int currentEdge = 0; currentEdge < edgesToTag[currentPolygon].second[currentRing].size(); ++currentEdge) {
+                previousVertex = triangulation.vertices_in_constraint_begin(edgesToTag[currentPolygon].second[currentRing].at(currentEdge),
+                                                                            edgesToTag[currentPolygon].second[currentRing].at((currentEdge+1)%edgesToTag[currentPolygon].second[currentRing].size()));
+                // Check if the returned order is the same
+                if ((*previousVertex)->point() == edgesToTag[currentPolygon].second[currentRing].at(currentEdge)->point()) sameOrder = true;
+                else sameOrder = false;
+                currentVertex = previousVertex;
+                ++currentVertex;
+                while (currentVertex != triangulation.vertices_in_constraint_end(edgesToTag[currentPolygon].second[currentRing].at(currentEdge),
+                                                                                 edgesToTag[currentPolygon].second[currentRing].at((currentEdge+1)%edgesToTag[currentPolygon].second[currentRing].size()))) {
+                    if (sameOrder) {
+                        if (!triangulation.is_edge(*previousVertex, *currentVertex, currentFace, incident)) {
+                            std::cout << "Error: No edge found!" << std::endl;
+                            return false;
+                        }
+                    } else {
+                        if (!triangulation.is_edge(*currentVertex, *previousVertex, currentFace, incident)) {
+                            std::cout << "Error: No edge found!" << std::endl;
+                            return false;
+                        }
+                    } previousVertex = currentVertex;
+                    currentVertex++;
+                    stack.push(currentFace);
+                }
+            }
+        }
+		
+		// Free memory for inner boundary
 		edgesToTag[currentPolygon].second.clear();
 		
 		// Expand the tags
