@@ -318,7 +318,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
     return true;
 }
 
-bool IOWorker::tagTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag) {
+bool IOWorker::tagTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag, bool spatialExtent) {
 	
 	std::stack<Triangulation::Face_handle> stack;
 	Triangulation::Vertices_in_constraint_iterator previousVertex, currentVertex;
@@ -328,7 +328,7 @@ bool IOWorker::tagTriangulation(Triangulation &triangulation, TaggingVector &edg
 	
 	// Add all edges of a polygon
 	for (unsigned int currentPolygon = 0; currentPolygon < edgesToTag.size(); ++currentPolygon) {
-		
+    
 		// Outer boundary
 		for (unsigned int currentEdge = 0; currentEdge < edgesToTag[currentPolygon].first.size(); ++currentEdge) {
 			previousVertex = triangulation.vertices_in_constraint_begin(edgesToTag[currentPolygon].first[currentEdge],
@@ -393,8 +393,13 @@ bool IOWorker::tagTriangulation(Triangulation &triangulation, TaggingVector &edg
 		// Free memory for inner boundary
 		edgesToTag[currentPolygon].second.clear();
 		
-		// Expand the tags
-		tagStack(stack, polygons[currentPolygon]);
+		// Expand the tags: special handling of the spatialExtent tag if needed
+        if ( (spatialExtent == true) && (currentPolygon+1 == edgesToTag.size()) )
+            tagStack(stack, &extent);
+        else
+            tagStack(stack, polygons[currentPolygon]);
+		
+        
 	}
 	
 	// Free remaining memory
@@ -2101,6 +2106,7 @@ void IOWorker::insertTriangulationInfo(std::ostream &ostr, const Triangulation &
     ostr << "\tHoles:    " << untagged << " triangles (" << 100.0*untagged/total << " %)" << std::endl <<
     "\tOk:       " << onetag << " triangles (" << 100.0*onetag/total << " %)" << std::endl <<
     "\tOverlaps: " << multipletags << " triangles (" << 100.0*multipletags/total << " %)" << std::endl;
-	
-	// Other info?
+    std::cout << "***" << std::endl;
 }
+
+

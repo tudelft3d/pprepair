@@ -30,6 +30,8 @@ public:
 	PlanarPartition();
 	~PlanarPartition();
     
+    bool spatialExtent = false;
+    
     // Operations
     bool addToTriangulation(const char *file, unsigned int schemaIndex = 0);
     

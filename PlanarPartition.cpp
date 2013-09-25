@@ -73,7 +73,7 @@ bool PlanarPartition::tagTriangulation() {
 	std::cout << "Tagging..." << std::endl;
 	time_t thisTime = time(NULL);
     
-    bool returnValue = io.tagTriangulation(triangulation, edgesToTag);
+    bool returnValue = io.tagTriangulation(triangulation, edgesToTag, spatialExtent);
 	
 	// Mark as tagged (for export)
 	if (returnValue) state = TAGGED;

@@ -22,14 +22,15 @@
 #include "PlanarPartition.h"
 
 enum RepairMethod {
-    VALIDATE_ONLY = -1,
-    NUMBER_OF_NEIGHBOURS = 0,
-    ABSOLUTE_MAJORITY = 1,
-    LONGEST_BOUNDARY = 2,
+    VALIDATE_ONLY               = -1,
+    NUMBER_OF_NEIGHBOURS        = 0,
+    ABSOLUTE_MAJORITY           = 1,
+    LONGEST_BOUNDARY            = 2,
     REGIONS_BY_LONGEST_BOUNDARY = 3,
     REGIONS_BY_RANDOM_NEIGHBOUR = 4,
-    PRIORITY_LIST = 5,
-    PRIORITY_LIST_EDGEMATCHING = 6
+    PRIORITY_LIST               = 5,
+    PRIORITY_LIST_EDGEMATCHING  = 6,
+    SPATIAL_EXTENT              = 7
 };
 
 int main(int argc, const char *argv[]) {
@@ -38,7 +39,9 @@ int main(int argc, const char *argv[]) {
     PlanarPartition pp;
     bool processInOrder = false;
     
+  
     std::list<std::pair<std::string, int> > inputFiles;
+    std::string extentFile;
     std::string outputFile, outputFileWithProvenance, taggedTriangulationOutputFile, triangulationOutputFile, triangulationOutputFileWithProvenance;
     bool makeHolesValid = false, splitRegions = false, alsoUniverse = false, matchSchemata = false, bigData = false;
     double splitRegionsRatio;
@@ -105,7 +108,20 @@ int main(int argc, const char *argv[]) {
                 return 1;
             }
         }
-        
+      
+        // input = spatial extent
+        else if (strcmp(argv[argNum], "-ext") == 0) {
+            if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
+                ++argNum;
+                pp.spatialExtent = true;
+                repairMethods.push_back(std::pair<RepairMethod, std::string>(SPATIAL_EXTENT, std::string()));
+                extentFile = argv[argNum];
+            } else {
+                std::cerr << "Error: Missing filename argument for -otwp";
+                return 1;
+            }
+        }
+
         // Tag triangulation
         else if (strcmp(argv[argNum], "-fix") == 0) {
             if (!processInOrder) {
@@ -299,9 +315,12 @@ int main(int argc, const char *argv[]) {
         if (inputFiles.size() == 0) {
             std::cerr << "Error: No input files given.";
             return 1;
-        } for (std::list<std::pair<std::string, int> >::iterator currentFile = inputFiles.begin(); currentFile != inputFiles.end(); ++currentFile)
+        } for (std::list<std::pair<std::string, int> >::iterator currentFile = inputFiles.begin(); currentFile != inputFiles.end(); ++currentFile) {
             pp.addToTriangulation(currentFile->first.c_str(), currentFile->second);
-        
+        }
+        if (pp.spatialExtent == true)
+            pp.addToTriangulation(extentFile.c_str(), 0);
+      
         // Tag
         pp.tagTriangulation();
         
@@ -319,6 +338,9 @@ int main(int argc, const char *argv[]) {
         if (splitRegions) pp.splitRegions(splitRegionsRatio);
         
         // Repair
+        if (pp.spatialExtent == true) {
+            std::cout << "repair the extent polygon with edge matching first" << std::endl;
+        }
         bool outputResults = false;
         for (std::list<std::pair<RepairMethod, std::string> >::iterator currentFile = repairMethods.begin(); currentFile != repairMethods.end(); ++currentFile) {
             switch (currentFile->first) {
@@ -360,10 +382,19 @@ int main(int argc, const char *argv[]) {
                     pp.repairEdgeMatching(currentFile->second.c_str());
                     outputResults = true;
                     break;
+
+//                case SPATIAL_EXTENT:
+//                    pp.repairSpatialExtent(currentFile->second.c_str());
+//                    outputResults = true;
+//                    break;
                     
                 default:
                     break;
             }
+        }
+        
+        if (pp.spatialExtent == true) {
+            std::cout << "Remove extent tags." << std::endl;
         }
         
         // Print info

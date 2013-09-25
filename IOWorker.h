@@ -32,7 +32,7 @@ public:
     
     // Main operations
     bool addToTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag, const char *file, unsigned int schemaIndex);
-    bool tagTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag);
+    bool tagTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag, bool spatialExtent = false);
     bool makeAllHolesValid(Triangulation &triangulation);
     bool splitRegions(Triangulation &triangulation, double ratio);
     bool repairTrianglesByNumberOfNeighbours(Triangulation &triangulation, bool alsoUniverse);
@@ -127,6 +127,7 @@ private:
     
     // Internal special tags
 	PolygonHandle universe;
+    PolygonHandle extent;
     
     // Cached values
     Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
