@@ -26,37 +26,37 @@
 
 class PlanarPartition {
 public:
-    // Constructors and destructors, initialisation
+  // Constructors and destructors, initialisation
 	PlanarPartition();
 	~PlanarPartition();
-    
-    // Operations
-    bool addToTriangulation(const char *file, unsigned int schemaIndex = 0);
-    
-    bool tagTriangulation();
-    bool makeAllHolesValid();
-    bool addAllowedHole(Point p);
-    bool addAllowedHoles(const char *file);
-    bool splitRegions(double ratio);
-    
-    bool checkValidity();
-    bool repairTrianglesByNumberOfNeighbours(bool alsoUniverse);
+  
+  // Operations
+  bool addToTriangulation(const char *file, unsigned int schemaIndex = 0);
+  
+  bool tagTriangulation();
+  bool makeAllHolesValid();
+  bool addAllowedHole(Point p);
+  bool addAllowedHoles(const char *file);
+  bool splitRegions(double ratio);
+  
+  bool checkValidity();
+  bool repairTrianglesByNumberOfNeighbours(bool alsoUniverse);
 	bool repairTrianglesByAbsoluteMajority(bool alsoUniverse);
 	bool repairTrianglesByLongestBoundary(bool alsoUniverse);
 	bool repairRegionsByLongestBoundary(bool alsoUniverse);
 	bool repairRegionsByRandomNeighbour(bool alsoUniverse);
 	bool repairByPriorityList(const char *file);
-    bool repairEdgeMatching(const char *file);
-    
-    bool matchSchemata();
-    
-    bool reconstructPolygons(bool removeVertices = false);
-    
-    bool exportPolygons(const char *file, bool withProvenance);
-    bool exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);
-    
-    void printInfo();
-    
+  bool repairEdgeMatching(const char *file);
+  
+  bool matchSchemata();
+  
+  bool reconstructPolygons(bool removeVertices = false);
+  
+  bool exportPolygons(const char *file, bool withProvenance);
+  bool exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);
+  
+  void printInfo();
+  
 private:  // Comment to have access to the triangulation and other data structures from outside
 	// Internal states
 	enum State {
@@ -66,15 +66,15 @@ private:  // Comment to have access to the triangulation and other data structur
 		REPAIRED,
 		RECONSTRUCTED
 	};
-    State state;
-    
-    // I/O handler
-    IOWorker io;
-    
-    // Generated stuff
+  State state;
+  
+  // I/O handler
+  IOWorker io;
+  
+  // Generated stuff
 	Triangulation triangulation;
-    TaggingVector edgesToTag;
-    std::vector<std::pair<PolygonHandle *, Polygon> > outputPolygons;
+  TaggingVector edgesToTag;
+  std::vector<std::pair<PolygonHandle *, Polygon> > outputPolygons;
 };
 
 #endif
