@@ -339,8 +339,10 @@ int main(int argc, const char *argv[]) {
         
         // Repair
         if (pp.spatialExtent == true) {
-            std::cout << "repair the extent polygon with edge matching first" << std::endl;
+//            std::cout << "repair the extent polygon with edge matching first" << std::endl;
+            pp.repairSpatialExtent();
         }
+        
         bool outputResults = false;
         for (std::list<std::pair<RepairMethod, std::string> >::iterator currentFile = repairMethods.begin(); currentFile != repairMethods.end(); ++currentFile) {
             switch (currentFile->first) {
@@ -382,19 +384,16 @@ int main(int argc, const char *argv[]) {
                     pp.repairEdgeMatching(currentFile->second.c_str());
                     outputResults = true;
                     break;
-
-//                case SPATIAL_EXTENT:
-//                    pp.repairSpatialExtent(currentFile->second.c_str());
-//                    outputResults = true;
-//                    break;
                     
                 default:
                     break;
             }
         }
-        
+
+        // Remove the spatialExtent tags from the triangulation
         if (pp.spatialExtent == true) {
             std::cout << "Remove extent tags." << std::endl;
+            pp.removeAllExtentTags();
         }
         
         // Print info

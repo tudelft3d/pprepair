@@ -87,6 +87,10 @@ bool PlanarPartition::makeAllHolesValid() {
     return io.makeAllHolesValid(triangulation);
 }
 
+void PlanarPartition::removeAllExtentTags () {
+    io.removeAllExtentTags(triangulation);
+}
+
 bool PlanarPartition::checkValidity() {
 	
 	if (state < TAGGED) {
@@ -304,6 +308,25 @@ bool PlanarPartition::repairEdgeMatching(const char *file) {
 	// Return whether the planar partition is now valid
 	if (repaired) state = REPAIRED;
 	return repaired;
+}
+
+bool PlanarPartition::repairSpatialExtent() {
+	
+	if (state < TAGGED) {
+		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
+		return false;
+	} if (state > TAGGED) {
+		std::cout << "Triangulation already repaired!" << std::endl;
+		return false;
+	}
+	
+	std::cout << "Repairing regions adjacent to the spatial extent" << std::endl;
+	time_t thisTime = time(NULL);
+	
+	io.repairSpatialExtent(triangulation);
+    std::cout << "Repair of spatial extent successful (" << time(NULL)-thisTime << " s)" << std::endl;
+    
+    return true;
 }
 
 bool PlanarPartition::matchSchemata() {

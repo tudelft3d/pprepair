@@ -34,6 +34,7 @@ public:
     bool addToTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag, const char *file, unsigned int schemaIndex);
     bool tagTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag, bool spatialExtent = false);
     bool makeAllHolesValid(Triangulation &triangulation);
+    void removeAllExtentTags(Triangulation &triangulation);
     bool splitRegions(Triangulation &triangulation, double ratio);
     bool repairTrianglesByNumberOfNeighbours(Triangulation &triangulation, bool alsoUniverse);
 	bool repairTrianglesByAbsoluteMajority(Triangulation &triangulation, bool alsoUniverse);
@@ -42,6 +43,7 @@ public:
 	bool repairRegionsByRandomNeighbour(Triangulation &triangulation, bool alsoUniverse);
 	bool repairByPriorityList(Triangulation &triangulation, const char *file);
     bool repairEdgeMatching(Triangulation &triangulation, const char *file);
+    void repairSpatialExtent(Triangulation &triangulation);
     bool matchSchemata(Triangulation &triangulation);
     void removeConstraints(Triangulation &triangulation);
     void removeVertices(Triangulation &triangulation);

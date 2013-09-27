@@ -37,6 +37,7 @@ public:
     
     bool tagTriangulation();
     bool makeAllHolesValid();
+    void removeAllExtentTags();
     bool addAllowedHole(Point p);
     bool addAllowedHoles(const char *file);
     bool splitRegions(double ratio);
@@ -49,6 +50,7 @@ public:
 	bool repairRegionsByRandomNeighbour(bool alsoUniverse);
 	bool repairByPriorityList(const char *file);
     bool repairEdgeMatching(const char *file);
+    bool repairSpatialExtent();
     
     bool matchSchemata();
     
