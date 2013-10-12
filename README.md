@@ -12,7 +12,13 @@ When software that expects a planar partition received one that is not so, it ca
 
 ## How does pprepair work?
 
-In short, pprepair creates a constrained triangulation of the polygons, tags each triangle with the polygon that it belongs to, modifies the triangulation to ensure that only one tag is present in each, and reconstructs the polygons from the triangulation. Many more details are available in Ken Arroyo Ohori's MSc thesis [here](http://www.gdmc.nl/ken/files/10mscthesis.pdf).
+In short, pprepair creates a constrained triangulation of the polygons, tags each triangle with the polygon that it belongs to, modifies the triangulation to ensure that only one tag is present in each, and reconstructs the polygons from the triangulation. 
+
+Many more details are available in Ken Arroyo Ohori's MSc thesis [here](http://www.gdmc.nl/ken/files/10mscthesis.pdf).
+
+If you use pprepair for your research, please cite this publication:
+
+> Arroyo Ohori, Ken, Ledoux, Hugo and Meijers, Martijn (2012). Validation and Automatic Repair of Planar Partitions Using a Constrained Triangulation. *Journal of photogrammetry, remote sensing and geoinformation processing (PFG)*. 5:613–630. [ [PDF] ](http://www.gdmc.nl/ken/files/12_pfg.pdf) [ [DOI] ](http://dx.doi.org/10.1127/1432-8364/2012/0143)
 
 ## How do I use pprepair?
 
