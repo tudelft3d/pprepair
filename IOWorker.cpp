@@ -1077,14 +1077,16 @@ bool IOWorker::repairEdgeMatching(Triangulation &triangulation, const char *file
 }
 
 void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
-    
+  
 	// Use a temporary vector to make it deterministic and order independent
 	std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
 	std::set<Triangulation::Face_handle> processedFaces;
 	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
-        //-- ONE NEIGHBOUR OF EXTENT SHOULD BE FOUND!!!  (currentFace->info().hasTag(&extent)) && 
-		if ( (!currentFace->info().hasOneTag()) && (!processedFaces.count(currentFace)) ) {
-			
+    //-- ONE NEIGHBOUR OF EXTENT SHOULD BE FOUND!!!  (currentFace->info().hasTag(&extent)) &&
+//		if ( (!currentFace->info().hasOneTag()) && (!processedFaces.count(currentFace)) ) {
+		if ( (!processedFaces.count(currentFace)) ) {
+      if ( (currentFace->info().hasOneTag()) && (currentFace->info().hasTag(&extent) == false) )
+        continue;
 			// Expand this triangle into a complete region
 			std::set<Triangulation::Face_handle> facesInRegion;
 			facesInRegion.insert(currentFace);
@@ -1095,56 +1097,53 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
 				facesToProcess.pop();
 				processedFaces.insert(currentFaceInStack);
 				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
-					!triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
+            !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(0));
 					facesToProcess.push(currentFaceInStack->neighbor(0));
 				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
-					  !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(1));
 					facesToProcess.push(currentFaceInStack->neighbor(1));
 				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
-					  !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
 					facesInRegion.insert(currentFaceInStack->neighbor(2));
 					facesToProcess.push(currentFaceInStack->neighbor(2));
 				}
 			}
 			
-            PolygonHandle *tagToAssign = NULL;
-            //-- gaps
-            if (currentFace->info().hasNoTags()) {
-                tagToAssign = &extent;
-            }
-            else { //- overlaps
-                //-- Find a random tag to assign
-                PolygonHandle *tagToAssign;
-                while (true) {
-                    std::set<Triangulation::Face_handle>::iterator randomFace = facesInRegion.begin();
-                    std::advance(randomFace, rand()%facesInRegion.size());
-                    int neighbourIndex = rand()%3;
-                    unsigned int numberOfTags = (*randomFace)->neighbor(neighbourIndex)->info().numberOfTags();
-                    if (numberOfTags == 0) continue;
-                    if (numberOfTags == 1) {
-                        tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();
-                        if (tagToAssign != &universe && tagToAssign != &extent)
-                            break;
-                    } else {
-                        std::list<PolygonHandle *>::const_iterator randomTag = static_cast<MultiPolygonHandle *>((*randomFace)->neighbor(neighbourIndex)->info().getTags())->getHandles()->begin();
-                        std::advance(randomTag, rand()%numberOfTags);
-                        tagToAssign = *randomTag;
-                        if (tagToAssign != &universe  && tagToAssign != &extent)
-                            break;
-                    }
-                }
-            }
+      PolygonHandle *tagToAssign = NULL;
+      //-- gaps
+      if (currentFace->info().hasNoTags()) {
+        tagToAssign = &extent;
+      }
+      else { //- overlaps
+        //-- Find a random tag to assign
+        PolygonHandle *tagToAssign;
+        while (true) {
+          std::set<Triangulation::Face_handle>::iterator randomFace = facesInRegion.begin();
+          std::advance(randomFace, rand()%facesInRegion.size());
+          int neighbourIndex = rand()%3;
+          unsigned int numberOfTags = (*randomFace)->neighbor(neighbourIndex)->info().numberOfTags();
+          if (numberOfTags == 0) continue;
+          if (numberOfTags == 1) {
+            tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();
+            if (tagToAssign != &universe && tagToAssign != &extent)
+              break;
+          } else {
+            std::list<PolygonHandle *>::const_iterator randomTag = static_cast<MultiPolygonHandle *>((*randomFace)->neighbor(neighbourIndex)->info().getTags())->getHandles()->begin();
+            std::advance(randomTag, rand()%numberOfTags);
+            tagToAssign = *randomTag;
+            if (tagToAssign != &universe  && tagToAssign != &extent)
+              break;
+          }
+        }
+      }
 			
 			// Assign the region to the random tag
 			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
-                // Gap, check neighbours
-				if ((*currentFaceInRegion)->info().hasNoTags()) {
-                    facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
-                }
-            }
-        }
+				facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
+      }
+    }
 	}
 	
 	// Re-tag faces in the vector
