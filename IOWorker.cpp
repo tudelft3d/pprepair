@@ -1083,10 +1083,7 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
 	std::set<Triangulation::Face_handle> processedFaces;
 	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
     //-- ONE NEIGHBOUR OF EXTENT SHOULD BE FOUND!!!  (currentFace->info().hasTag(&extent)) &&
-//		if ( (!currentFace->info().hasOneTag()) && (!processedFaces.count(currentFace)) ) {
-		if ( (!processedFaces.count(currentFace)) ) {
-      if ( (currentFace->info().hasOneTag()) && (currentFace->info().hasTag(&extent) == false) )
-        continue;
+		if ( (!currentFace->info().hasOneTag()) && (processedFaces.count(currentFace) == 0) ) {
 			// Expand this triangle into a complete region
 			std::set<Triangulation::Face_handle> facesInRegion;
 			facesInRegion.insert(currentFace);
@@ -1114,9 +1111,6 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
       PolygonHandle *tagToAssign = NULL;
       //-- gaps
       if (currentFace->info().hasNoTags()) {
-        tagToAssign = &extent;
-      }
-      else { //- overlaps
         //-- Find a random tag to assign
         PolygonHandle *tagToAssign;
         while (true) {
@@ -1129,7 +1123,8 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
             tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();
             if (tagToAssign != &universe && tagToAssign != &extent)
               break;
-          } else {
+          }
+          else {
             std::list<PolygonHandle *>::const_iterator randomTag = static_cast<MultiPolygonHandle *>((*randomFace)->neighbor(neighbourIndex)->info().getTags())->getHandles()->begin();
             std::advance(randomTag, rand()%numberOfTags);
             tagToAssign = *randomTag;
@@ -1137,6 +1132,12 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
               break;
           }
         }
+        if (tagToAssign == NULL)
+          std::cout << "88888888888888888" << std::endl;
+      }
+      else {
+        //- overlaps
+        tagToAssign = &extent;
       }
 			
 			// Assign the region to the random tag
