@@ -96,7 +96,9 @@ bool PlanarPartition::checkValidity() {
 	if (state < TAGGED) {
 		std::cout << "Triangulation not yet tagged. Cannot check!" << std::endl;
 		return false;
-	} if (state >= REPAIRED) return true;
+	}
+  
+  if (state >= REPAIRED) return true;
 	
 	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
 		if (!(*currentFace).info().hasOneTag()) return true;	// true means successful operation, not that everything is valid
@@ -324,9 +326,9 @@ bool PlanarPartition::repairSpatialExtent() {
 	time_t thisTime = time(NULL);
 	
 	io.repairSpatialExtent(triangulation);
-    std::cout << "Repair of spatial extent successful (" << time(NULL)-thisTime << " s)" << std::endl;
-    
-    return true;
+  std::cout << "Repair of spatial extent successful (" << time(NULL)-thisTime << " s)" << std::endl;
+  
+  return true;
 }
 
 bool PlanarPartition::matchSchemata() {

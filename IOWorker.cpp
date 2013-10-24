@@ -1077,13 +1077,13 @@ bool IOWorker::repairEdgeMatching(Triangulation &triangulation, const char *file
 }
 
 void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
-  
+	
 	// Use a temporary vector to make it deterministic and order independent
 	std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
 	std::set<Triangulation::Face_handle> processedFaces;
 	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
-    //-- ONE NEIGHBOUR OF EXTENT SHOULD BE FOUND!!!  (currentFace->info().hasTag(&extent)) &&
-		if ( (!currentFace->info().hasOneTag()) && (processedFaces.count(currentFace) == 0) ) {
+		if (!currentFace->info().hasOneTag() && !processedFaces.count(currentFace)) {
+			
 			// Expand this triangle into a complete region
 			std::set<Triangulation::Face_handle> facesInRegion;
 			facesInRegion.insert(currentFace);
@@ -1108,11 +1108,9 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
 				}
 			}
 			
-      PolygonHandle *tagToAssign = NULL;
-      //-- gaps
-      if (currentFace->info().hasNoTags()) {
-        //-- Find a random tag to assign
-        PolygonHandle *tagToAssign;
+			// Find a random tag
+			PolygonHandle *tagToAssign;
+      if (currentFace->info().hasNoTags()) { //-- gap
         while (true) {
           std::set<Triangulation::Face_handle>::iterator randomFace = facesInRegion.begin();
           std::advance(randomFace, rand()%facesInRegion.size());
@@ -1121,30 +1119,29 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
           if (numberOfTags == 0) continue;
           if (numberOfTags == 1) {
             tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();
-            if (tagToAssign != &universe && tagToAssign != &extent)
+            if ( (tagToAssign != &universe) && (tagToAssign != &extent) )
               break;
           }
           else {
             std::list<PolygonHandle *>::const_iterator randomTag = static_cast<MultiPolygonHandle *>((*randomFace)->neighbor(neighbourIndex)->info().getTags())->getHandles()->begin();
             std::advance(randomTag, rand()%numberOfTags);
             tagToAssign = *randomTag;
-            if (tagToAssign != &universe  && tagToAssign != &extent)
+            if ( (tagToAssign != &universe) && (tagToAssign != &extent) )
               break;
           }
         }
-        if (tagToAssign == NULL)
-          std::cout << "88888888888888888" << std::endl;
+        if (tagToAssign == &extent)
+          std::cout << "OUPSSSSSSSSSSS" << std::endl;
       }
-      else {
-        //- overlaps
+      else { //-- overlap
         tagToAssign = &extent;
       }
 			
 			// Assign the region to the random tag
 			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
 				facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
-      }
-    }
+			}
+		}
 	}
 	
 	// Re-tag faces in the vector
@@ -1153,6 +1150,7 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
 		currentFace->first->info().addTag(currentFace->second);
 	}
 }
+  
 
 
 bool IOWorker::matchSchemata(Triangulation &triangulation) {

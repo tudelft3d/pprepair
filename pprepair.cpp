@@ -342,6 +342,8 @@ int main(int argc, const char *argv[]) {
 //            std::cout << "repair the extent polygon with edge matching first" << std::endl;
             pp.repairSpatialExtent();
         }
+//        bool answer = pp.checkValidity();
+        pp.printInfo();
         
         bool outputResults = false;
         for (std::list<std::pair<RepairMethod, std::string> >::iterator currentFile = repairMethods.begin(); currentFile != repairMethods.end(); ++currentFile) {
