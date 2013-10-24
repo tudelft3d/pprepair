@@ -1109,38 +1109,59 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
 			}
 			
 			// Find a random tag
-			PolygonHandle *tagToAssign;
-      if (currentFace->info().hasNoTags()) { //-- gap
-        while (true) {
-          std::set<Triangulation::Face_handle>::iterator randomFace = facesInRegion.begin();
-          std::advance(randomFace, rand()%facesInRegion.size());
-          int neighbourIndex = rand()%3;
-          unsigned int numberOfTags = (*randomFace)->neighbor(neighbourIndex)->info().numberOfTags();
-          if (numberOfTags == 0) continue;
-          if (numberOfTags == 1) {
-            tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();
-            if ( (tagToAssign != &universe) && (tagToAssign != &extent) )
+			PolygonHandle *tagToAssign = NULL;
+      bool errorrelatedtoextent = false;
+      if (currentFace->info().hasNoTags()) {
+        //-- a gap
+        bool extentgap = false;
+        //-- check if the gap is neighbouring to an extent
+        for (std::set<Triangulation::Face_handle>::const_iterator cur = facesInRegion.begin(); cur != facesInRegion.end(); cur++) {
+          for (int i = 0; i < 3; i++) {
+            if ( (*cur)->neighbor(i)->info().hasTag(&extent) == true) {
+              extentgap = true;
               break;
-          }
-          else {
-            std::list<PolygonHandle *>::const_iterator randomTag = static_cast<MultiPolygonHandle *>((*randomFace)->neighbor(neighbourIndex)->info().getTags())->getHandles()->begin();
-            std::advance(randomTag, rand()%numberOfTags);
-            tagToAssign = *randomTag;
-            if ( (tagToAssign != &universe) && (tagToAssign != &extent) )
-              break;
+            }
           }
         }
-        if (tagToAssign == &extent)
-          std::cout << "OUPSSSSSSSSSSS" << std::endl;
+        
+        if (extentgap == true) {
+          while (true) {
+            std::set<Triangulation::Face_handle>::iterator randomFace = facesInRegion.begin();
+            std::advance(randomFace, rand()%facesInRegion.size());
+            int neighbourIndex = rand()%3;
+            unsigned int numberOfTags = (*randomFace)->neighbor(neighbourIndex)->info().numberOfTags();
+            if (numberOfTags == 0) continue;
+            if (numberOfTags == 1) {
+              tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();
+              if ( (tagToAssign != &universe) && (tagToAssign != &extent) )
+                break;
+            }
+            else {
+              std::list<PolygonHandle *>::const_iterator randomTag = static_cast<MultiPolygonHandle *>((*randomFace)->neighbor(neighbourIndex)->info().getTags())->getHandles()->begin();
+              std::advance(randomTag, rand()%numberOfTags);
+              tagToAssign = *randomTag;
+              if ( (tagToAssign != &universe) && (tagToAssign != &extent) )
+                break;
+            }
+          }
+        }
+        errorrelatedtoextent = extentgap;
       }
-      else { //-- overlap
-        tagToAssign = &extent;
+      else {
+        //-- an overlap
+        std::set<Triangulation::Face_handle>::iterator cur = facesInRegion.begin();
+        if ( (*cur)->info().hasTag(&extent) ) {
+          tagToAssign = &extent;
+          errorrelatedtoextent = true;
+        }
       }
 			
 			// Assign the region to the random tag
-			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
-				facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
-			}
+      if (errorrelatedtoextent == true) {
+        for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+          facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
+        }
+      }
 		}
 	}
 	
