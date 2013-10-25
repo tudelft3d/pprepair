@@ -1076,6 +1076,33 @@ bool IOWorker::repairEdgeMatching(Triangulation &triangulation, const char *file
 	return true;
 }
 
+
+void IOWorker::expandTriangleIntoRegion(Triangulation::Finite_faces_iterator &currentFace, Triangulation &triangulation, std::set<Triangulation::Face_handle> &facesInRegion, std::set<Triangulation::Face_handle> &processedFaces) {
+  
+  facesInRegion.insert(currentFace);
+  std::stack<Triangulation::Face_handle> facesToProcess;
+  facesToProcess.push(currentFace);
+  while (facesToProcess.size() > 0) {
+    Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
+    facesToProcess.pop();
+    processedFaces.insert(currentFaceInStack);
+    if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
+        !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
+      facesInRegion.insert(currentFaceInStack->neighbor(0));
+      facesToProcess.push(currentFaceInStack->neighbor(0));
+    } if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
+          !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
+      facesInRegion.insert(currentFaceInStack->neighbor(1));
+      facesToProcess.push(currentFaceInStack->neighbor(1));
+    } if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
+          !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
+      facesInRegion.insert(currentFaceInStack->neighbor(2));
+      facesToProcess.push(currentFaceInStack->neighbor(2));
+    }
+  }
+  
+}
+
 void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
 	
 	// Use a temporary vector to make it deterministic and order independent
@@ -1084,31 +1111,11 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
 	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
 		if (!currentFace->info().hasOneTag() && !processedFaces.count(currentFace)) {
 			
-			// Expand this triangle into a complete region
+			//-- Expand this triangle into a complete region
 			std::set<Triangulation::Face_handle> facesInRegion;
-			facesInRegion.insert(currentFace);
-			std::stack<Triangulation::Face_handle> facesToProcess;
-			facesToProcess.push(currentFace);
-			while (facesToProcess.size() > 0) {
-				Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
-				facesToProcess.pop();
-				processedFaces.insert(currentFaceInStack);
-				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
-            !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
-					facesInRegion.insert(currentFaceInStack->neighbor(0));
-					facesToProcess.push(currentFaceInStack->neighbor(0));
-				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
-              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
-					facesInRegion.insert(currentFaceInStack->neighbor(1));
-					facesToProcess.push(currentFaceInStack->neighbor(1));
-				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
-              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
-					facesInRegion.insert(currentFaceInStack->neighbor(2));
-					facesToProcess.push(currentFaceInStack->neighbor(2));
-				}
-			}
+      expandTriangleIntoRegion(currentFace, triangulation, facesInRegion, processedFaces);
 			
-			// Find a random tag
+
 			PolygonHandle *tagToAssign = NULL;
       bool errorrelatedtoextent = false;
       if (currentFace->info().hasNoTags()) {
@@ -1126,6 +1133,7 @@ void IOWorker::repairSpatialExtent(Triangulation &triangulation) {
         
         if (extentgap == true) {
           while (true) {
+       			//-- Find a random tag among the direct neighbours of the region
             std::set<Triangulation::Face_handle>::iterator randomFace = facesInRegion.begin();
             std::advance(randomFace, rand()%facesInRegion.size());
             int neighbourIndex = rand()%3;

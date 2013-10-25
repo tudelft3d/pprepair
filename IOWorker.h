@@ -135,6 +135,7 @@ private:
     Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
     
     // Helper functions
+    void expandTriangleIntoRegion(Triangulation::Finite_faces_iterator &currentFace, Triangulation &triangulation, std::set<Triangulation::Face_handle> &facesInRegion, std::set<Triangulation::Face_handle> &processedFaces);
     unsigned int removeDuplicateVertices(std::list<Point> &ring);
     std::vector<Ring *> splitRing(Ring &ring);
     void testRings(std::vector<Ring *> &outerRings, std::vector<Ring *> &innerRings, std::vector<std::vector<Ring> > &classification, long fid);
