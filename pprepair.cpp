@@ -20,6 +20,7 @@
  */
 
 #include "PlanarPartition.h"
+#include "definitions/definitions.h"
 
 enum RepairMethod {
     VALIDATE_ONLY               = -1,
@@ -32,6 +33,43 @@ enum RepairMethod {
     PRIORITY_LIST_EDGEMATCHING  = 6,
     SPATIAL_EXTENT              = 7
 };
+
+
+bool constructHoleExtent(const char *file) {
+    
+    OGRRegisterAll();
+    OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file, false);
+	if (dataSource == NULL) {
+		std::cerr << "Error: Could not open file." << std::endl;
+		return false;
+	}
+    
+    OGRLayer *dataLayer = dataSource->GetLayer(0);
+	unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
+    if (numberOfPolygons != 1) {
+		std::cerr << "Error: Spatial Extent file has more than 1 feature" << std::endl;
+		return false;
+    }
+    
+    dataLayer->ResetReading();
+    
+    OGRFeature *feature;
+    feature = dataLayer->GetNextFeature();
+    if (feature->GetGeometryRef()->getGeometryType() != wkbPolygon) {
+		std::cerr << "Error: Spatial Extent feature not a Polygon" << std::endl;
+		return false;
+    }
+    
+    OGRPolygon *geometry = static_cast<OGRPolygon *>(feature->GetGeometryRef());
+    OGREnvelope *psEnvelope;
+    geometry->getEnvelope(psEnvelope);
+    
+    OGRLinearRing *oring = geometry->getExteriorRing();
+    
+    OGRFeature::DestroyFeature(feature);
+    OGRDataSource::DestroyDataSource(dataSource);
+    return true;
+}
 
 int main(int argc, const char *argv[]) {
     
