@@ -45,7 +45,9 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
     for (int currentLayer = 0; currentLayer < numberOfLayers; currentLayer++) {
         OGRLayer *dataLayer = dataSource->GetLayer(currentLayer);
         dataLayer->ResetReading();
-        spatialReference = dataLayer->GetSpatialRef();
+      OGRSpatialReference* tmp = dataLayer->GetSpatialRef();
+      if ( (tmp != NULL) && (spatialReference != NULL) )
+        spatialReference = tmp->CloneGeogCS();
 		
 		unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
 		std::cout << "\tReading layer #" << currentLayer+1 << " (" << numberOfPolygons << " polygons)...";
@@ -1267,7 +1269,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 		std::cout << "\tError: Could not create file." << std::endl;
 		return false;
 	}
-	
+
 	OGRLayer *layer = dataSource->CreateLayer("polygons", spatialReference, wkbPolygon, NULL);
 	if (layer == NULL) {
 		std::cout << "\tError: Could not create layer." << std::endl;
