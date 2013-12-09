@@ -27,37 +27,37 @@
 
 class IOWorker {
 public:
-    // Construction
-    IOWorker();
-    
-    // Main operations
-    bool addToTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag, const char *file, unsigned int schemaIndex);
-    bool tagTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag);
-    bool makeAllHolesValid(Triangulation &triangulation);
-    bool splitRegions(Triangulation &triangulation, double ratio);
-    bool repairTrianglesByNumberOfNeighbours(Triangulation &triangulation, bool alsoUniverse);
+  // Construction
+  IOWorker();
+  
+  // Main operations
+  bool addToTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag, const char *file, unsigned int schemaIndex);
+  bool tagTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag);
+  bool makeAllHolesValid(Triangulation &triangulation);
+  bool splitRegions(Triangulation &triangulation, double ratio);
+  bool repairTrianglesByNumberOfNeighbours(Triangulation &triangulation, bool alsoUniverse);
 	bool repairTrianglesByAbsoluteMajority(Triangulation &triangulation, bool alsoUniverse);
 	bool repairTrianglesByLongestBoundary(Triangulation &triangulation, bool alsoUniverse);
 	bool repairRegionsByLongestBoundary(Triangulation &triangulation, bool alsoUniverse);
 	bool repairRegionsByRandomNeighbour(Triangulation &triangulation, bool alsoUniverse);
 	bool repairByPriorityList(Triangulation &triangulation, const char *file);
-    bool repairEdgeMatching(Triangulation &triangulation, const char *file);
-    bool matchSchemata(Triangulation &triangulation);
-    void removeConstraints(Triangulation &triangulation);
-    void removeVertices(Triangulation &triangulation);
-    bool reconstructPolygons(Triangulation &triangulation, std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons);
-    bool exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons, const char *file, bool withProvenance);
-    bool exportTriangulation(Triangulation &t, const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);
-    
-    // Printing functions
-    void insertToStream(std::ostream &ostr, OGRFeatureDefn *layerDefinition, unsigned int indentation = 0, int schemaIndex = -1);
-    void insertToStream(std::ostream &ostr, const OGRFieldType &ft);
-    void insertToStream(std::ostream &ostr, const OGRwkbGeometryType &gt);
-    void insertTriangulationInfo(std::ostream &ostr, const Triangulation &t);
-    
+  bool repairEdgeMatching(Triangulation &triangulation, const char *file);
+  bool matchSchemata(Triangulation &triangulation);
+  void removeConstraints(Triangulation &triangulation);
+  void removeVertices(Triangulation &triangulation);
+  bool reconstructPolygons(Triangulation &triangulation, std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons);
+  bool exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons, const char *file, bool withProvenance);
+  bool exportTriangulation(Triangulation &t, const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);
+  
+  // Printing functions
+  void insertToStream(std::ostream &ostr, OGRFeatureDefn *layerDefinition, unsigned int indentation = 0, int schemaIndex = -1);
+  void insertToStream(std::ostream &ostr, const OGRFieldType &ft);
+  void insertToStream(std::ostream &ostr, const OGRwkbGeometryType &gt);
+  void insertTriangulationInfo(std::ostream &ostr, const Triangulation &t);
+  
 private:
-    // Data structures
-    struct FieldDescriptor {
+  // Data structures
+  struct FieldDescriptor {
 		char *file;
 		int layer;
 		int field;
@@ -78,8 +78,8 @@ private:
 			return false;
 		}
 	};
-    
-    struct FieldDefinition {
+  
+  struct FieldDefinition {
 		char *name;
 		OGRFieldType type;
 		OGRJustification justification;
@@ -110,37 +110,37 @@ private:
 			return true;
 		}
 	};
-    
-    struct FieldComparator {
+  
+  struct FieldComparator {
 		bool operator() (Field * const &f1, Field * const &f2) const {
 			return (*f1) < (*f2);
 		}
 	};
-    
-    // What is kept from input
+  
+  // What is kept from input
 	std::vector<char *> fileNames;
-    std::vector<PolygonHandle *> polygons;
-    OGRFieldType schemaFieldType;
-    std::vector<FieldDefinition *> fields;
-    std::map<FieldDescriptor, unsigned int> fieldEquivalencies;
-    OGRSpatialReference* spatialReference;
-    
-    // Internal special tags
+  std::vector<PolygonHandle *> polygons;
+  OGRFieldType schemaFieldType;
+  std::vector<FieldDefinition *> fields;
+  std::map<FieldDescriptor, unsigned int> fieldEquivalencies;
+  OGRSpatialReference* spatialReference;
+  
+  // Internal special tags
 	PolygonHandle universe;
-    
-    // Cached values
-    Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
-    
-    // Helper functions
-    unsigned int removeDuplicateVertices(std::list<Point> &ring);
-    std::vector<Ring *> splitRing(Ring &ring);
-    void testRings(std::vector<Ring *> &outerRings, std::vector<Ring *> &innerRings, std::vector<std::vector<Ring> > &classification, long fid);
-    void copyFields(OGRFeature *ogrfeature, PolygonHandle *handle);
-    void tagStack(std::stack<Triangulation::Face_handle> &positiveStack, std::stack<Triangulation::Face_handle> &negativeStack, PolygonHandle *positiveHandle, PolygonHandle *negativeHandle);
-    void tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHandle *handle);
-    std::list<Triangulation::Vertex_handle> *getBoundary(Triangulation::Face_handle face, int edge, PolygonHandle *polygon);
-    void addtoCount(std::map<PolygonHandle *, unsigned int> &count, PolygonHandle *ph);
-    void addToLength(std::map<PolygonHandle *, double> &lengths, PolygonHandle *ph, double length);
+  
+  // Cached values
+  Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
+  
+  // Helper functions
+  unsigned int removeDuplicateVertices(std::list<Point> &ring);
+  std::vector<Ring *> splitRing(Ring &ring);
+  void testRings(std::vector<Ring *> &outerRings, std::vector<Ring *> &innerRings, std::vector<std::vector<Ring> > &classification, long fid);
+  void copyFields(OGRFeature *ogrfeature, PolygonHandle *handle);
+  void tagStack(std::stack<Triangulation::Face_handle> &positiveStack, std::stack<Triangulation::Face_handle> &negativeStack, PolygonHandle *positiveHandle, PolygonHandle *negativeHandle);
+  void tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHandle *handle);
+  std::list<Triangulation::Vertex_handle> *getBoundary(Triangulation::Face_handle face, int edge, PolygonHandle *polygon);
+  void addtoCount(std::map<PolygonHandle *, unsigned int> &count, PolygonHandle *ph);
+  void addToLength(std::map<PolygonHandle *, double> &lengths, PolygonHandle *ph, double length);
 };
 
 #endif

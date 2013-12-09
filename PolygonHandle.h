@@ -27,9 +27,9 @@
 // Abstract class to store different types of attributes
 class Field {
 public:
-    // Destructor
-    virtual ~Field() = 0;
-    
+  // Destructor
+  virtual ~Field() = 0;
+  
 	// Find the type of field
 	const virtual OGRFieldType getType() = 0;
 	
@@ -96,18 +96,18 @@ public:
 	// Constructors and destructors
 	PolygonHandle(unsigned int si = 0, char *of = NULL, unsigned int l = 0, long fid = 0);
 	virtual ~PolygonHandle();
-    
-    // References
+  
+  // References
 	char * getOriginalFile();
 	unsigned int getLayer();
-    
-    // Field information
+  
+  // Field information
 	void addField(Field *field);
-    Field * getSchemaField();
-    Field * getField(unsigned int i);
+  Field * getSchemaField();
+  Field * getField(unsigned int i);
 	unsigned int getNumberOfFields();
-    
-    // Checking whether it's a MultiPolygonHandle
+  
+  // Checking whether it's a MultiPolygonHandle
 	virtual const bool isMultiPolygonHandle();
 protected:
 	char *originalFile;
@@ -126,17 +126,17 @@ protected:
 class MultiPolygonHandle : public PolygonHandle {
 public:
 	// Constructor. No need to start with less than two
-    MultiPolygonHandle(PolygonHandle *ph);
+  MultiPolygonHandle(PolygonHandle *ph);
 	~MultiPolygonHandle();
 	
-    // Checking whether it's a MultiPolygonHandle
+  // Checking whether it's a MultiPolygonHandle
 	virtual const bool isMultiPolygonHandle();
-    
-    // Access functions to the individual PolygonHandles
-    bool hasHandle(PolygonHandle *handle);
-    void addHandle(PolygonHandle *handle);
-    const std::list<PolygonHandle *> *getHandles();
-    unsigned int numberOfHandles();
+  
+  // Access functions to the individual PolygonHandles
+  bool hasHandle(PolygonHandle *handle);
+  void addHandle(PolygonHandle *handle);
+  const std::list<PolygonHandle *> *getHandles();
+  unsigned int numberOfHandles();
 private:
 	std::list<PolygonHandle *> handles;
 };

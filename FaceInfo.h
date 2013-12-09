@@ -26,26 +26,26 @@
 
 class FaceInfo {
 public:
-    // Constructors and destructors
+  // Constructors and destructors
 	FaceInfo();
 	~FaceInfo();
-    
-    // Clean (and expensive) access operations
+  
+  // Clean (and expensive) access operations
 	bool hasTag(PolygonHandle *handle);
-    bool hasNoTags() const;
-    bool hasOneTag() const;
-    unsigned int numberOfTags() const;
-    void addTag(PolygonHandle *handle);
-    void removeAllTags();
-    void substituteTagsWith(PolygonHandle *handle);
-    PolygonHandle * getOneTag() const;
-    
-    // Dirty (and cheap) access operations
+  bool hasNoTags() const;
+  bool hasOneTag() const;
+  unsigned int numberOfTags() const;
+  void addTag(PolygonHandle *handle);
+  void removeAllTags();
+  void substituteTagsWith(PolygonHandle *handle);
+  PolygonHandle * getOneTag() const;
+  
+  // Dirty (and cheap) access operations
 	PolygonHandle * getTags() const;
 	void setTags(PolygonHandle *handle);
-    
+  
 private:
-	// Tags to the polygons it belongs to. 
+	// Tags to the polygons it belongs to.
 	// If more than one, it points to a MultiPolygonHandle with a set of pointers to PolygonHandles.
 	PolygonHandle *tag;
 };

@@ -38,26 +38,26 @@ PlanarPartition::~PlanarPartition() {
 }
 
 bool PlanarPartition::addToTriangulation(const char *file, unsigned int schemaIndex) {
-    
-    // Check if we have already made changes to the triangulation
-    if (state > TRIANGULATED) {
-        std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
+  
+  // Check if we have already made changes to the triangulation
+  if (state > TRIANGULATED) {
+    std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
 		return false;
 	}
-    
-    std::cout << "Adding a new set of polygons to the triangulation..." << std::endl;
+  
+  std::cout << "Adding a new set of polygons to the triangulation..." << std::endl;
 	time_t thisTime = time(NULL);
-    
-    bool returnValue = io.addToTriangulation(triangulation, edgesToTag, file, schemaIndex);
-    if (triangulation.number_of_faces() > 0) state = TRIANGULATED;
-    
-    // Triangulation stats
+  
+  bool returnValue = io.addToTriangulation(triangulation, edgesToTag, file, schemaIndex);
+  if (triangulation.number_of_faces() > 0) state = TRIANGULATED;
+  
+  // Triangulation stats
 	std::cout << "Polygons added (" << time(NULL)-thisTime << " s). The triangulation has now:" << std::endl;
 	std::cout << "\tVertices: " << triangulation.number_of_vertices() << std::endl;
 	std::cout << "\tEdges: " << triangulation.tds().number_of_edges() << std::endl;
 	std::cout << "\tTriangles: " << triangulation.number_of_faces() << std::endl;
-    
-    return returnValue;
+  
+  return returnValue;
 }
 
 bool PlanarPartition::tagTriangulation() {
@@ -72,8 +72,8 @@ bool PlanarPartition::tagTriangulation() {
 	
 	std::cout << "Tagging..." << std::endl;
 	time_t thisTime = time(NULL);
-    
-    bool returnValue = io.tagTriangulation(triangulation, edgesToTag);
+  
+  bool returnValue = io.tagTriangulation(triangulation, edgesToTag);
 	
 	// Mark as tagged (for export)
 	if (returnValue) state = TAGGED;
@@ -84,7 +84,7 @@ bool PlanarPartition::tagTriangulation() {
 }
 
 bool PlanarPartition::makeAllHolesValid() {
-    return io.makeAllHolesValid(triangulation);
+  return io.makeAllHolesValid(triangulation);
 }
 
 bool PlanarPartition::checkValidity() {
@@ -266,8 +266,8 @@ bool PlanarPartition::repairByPriorityList(const char *file) {
 	
 	std::cout << "Repairing by priority list..." << std::endl;
 	time_t thisTime = time(NULL);
-    
-    bool repaired = io.repairByPriorityList(triangulation, file);
+  
+  bool repaired = io.repairByPriorityList(triangulation, file);
 	
 	if (repaired) {
 		std::cout << "Repair successful (" << time(NULL)-thisTime << " s). All polygons are now valid." << std::endl;
@@ -292,8 +292,8 @@ bool PlanarPartition::repairEdgeMatching(const char *file) {
 	
 	std::cout << "Repairing by priority list..." << std::endl;
 	time_t thisTime = time(NULL);
-    
-    bool repaired = io.repairEdgeMatching(triangulation, file);
+  
+  bool repaired = io.repairEdgeMatching(triangulation, file);
 	
 	if (repaired) {
 		std::cout << "Repair successful (" << time(NULL)-thisTime << " s). All polygons are now valid." << std::endl;
@@ -325,8 +325,8 @@ bool PlanarPartition::matchSchemata() {
 }
 
 bool PlanarPartition::reconstructPolygons(bool removeVertices) {
-    
-    if (state < TAGGED) {
+  
+  if (state < TAGGED) {
 		std::cout << "Triangulation not tagged. Cannot reconstruct!" << std::endl;
 		return false;
 	} if (state < REPAIRED) std::cout << "Warning: Triangulation not yet repaired. There could be errors..." << std::endl;
@@ -337,16 +337,16 @@ bool PlanarPartition::reconstructPolygons(bool removeVertices) {
 	
 	std::cout << "Reconstructing polygons (geometry)..." << std::endl;
 	time_t thisTime = time(NULL);
-    
-    io.removeConstraints(triangulation);
-    if (removeVertices) io.removeVertices(triangulation);
-    bool returnValue = io.reconstructPolygons(triangulation, outputPolygons);
-    
-    // Mark as reconstructed
+  
+  io.removeConstraints(triangulation);
+  if (removeVertices) io.removeVertices(triangulation);
+  bool returnValue = io.reconstructPolygons(triangulation, outputPolygons);
+  
+  // Mark as reconstructed
 	if (returnValue) state = RECONSTRUCTED;
 	
 	std::cout << "Polygons reconstructed (" << time(NULL)-thisTime << " s)." << std::endl;
-    return returnValue;
+  return returnValue;
 }
 
 bool PlanarPartition::exportPolygons(const char *file, bool withProvenance) {
@@ -358,11 +358,11 @@ bool PlanarPartition::exportPolygons(const char *file, bool withProvenance) {
 	
 	std::cout << "Exporting polygons..." << std::endl;
 	time_t thisTime = time(NULL);
-    
-    bool returnValue = io.exportPolygons(outputPolygons, file, withProvenance);
+  
+  bool returnValue = io.exportPolygons(outputPolygons, file, withProvenance);
 	
 	std::cout << "Polygons exported (" << time(NULL)-thisTime << " s)." << std::endl;
-    return returnValue;
+  return returnValue;
 }
 
 bool PlanarPartition::exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance) {
@@ -379,5 +379,5 @@ bool PlanarPartition::exportTriangulation(const char *file, bool withNumberOfTag
 }
 
 void PlanarPartition::printInfo() {
-    io.insertTriangulationInfo(std::cout, triangulation);
+  io.insertTriangulationInfo(std::cout, triangulation);
 }

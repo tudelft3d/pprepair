@@ -41,32 +41,32 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
 	int numberOfLayers = dataSource->GetLayerCount();
 	std::cout << "\tLayers: " << numberOfLayers << std::endl;
   
-    // Read layer by layer
-    for (int currentLayer = 0; currentLayer < numberOfLayers; currentLayer++) {
-        OGRLayer *dataLayer = dataSource->GetLayer(currentLayer);
-        dataLayer->ResetReading();
-      OGRSpatialReference* tmp = dataLayer->GetSpatialRef();
-      if ( (tmp != NULL) && (spatialReference != NULL) )
-        spatialReference = tmp->CloneGeogCS();
+  // Read layer by layer
+  for (int currentLayer = 0; currentLayer < numberOfLayers; currentLayer++) {
+    OGRLayer *dataLayer = dataSource->GetLayer(currentLayer);
+    dataLayer->ResetReading();
+    OGRSpatialReference* tmp = dataLayer->GetSpatialRef();
+    if ( (tmp != NULL) && (spatialReference != NULL) )
+      spatialReference = tmp->CloneGeogCS();
 		
 		unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
 		std::cout << "\tReading layer #" << currentLayer+1 << " (" << numberOfPolygons << " polygons)...";
 		polygons.reserve(polygons.size()+numberOfPolygons);
-        
-        // Check fields and the schema type
-        OGRFeatureDefn *layerDefinition = dataLayer->GetLayerDefn();
-        insertToStream(std::cout, layerDefinition, 1, schemaIndex);
-        
-        // If it's the first input file, assign the schema type of it
-        if (triangulation.number_of_faces() == 0) {
-            schemaFieldType = layerDefinition->GetFieldDefn(schemaIndex)->GetType();
-        } // Otherwise, check if it matches the previous one
-        else {
-            if (layerDefinition->GetFieldDefn(schemaIndex)->GetType() != schemaFieldType) {
-                std::cerr << "\tError: The schema field type in this layer is incompatible with the previous one. Skipped." << std::endl;
-                continue;
-            }
-        }
+    
+    // Check fields and the schema type
+    OGRFeatureDefn *layerDefinition = dataLayer->GetLayerDefn();
+    insertToStream(std::cout, layerDefinition, 1, schemaIndex);
+    
+    // If it's the first input file, assign the schema type of it
+    if (triangulation.number_of_faces() == 0) {
+      schemaFieldType = layerDefinition->GetFieldDefn(schemaIndex)->GetType();
+    } // Otherwise, check if it matches the previous one
+    else {
+      if (layerDefinition->GetFieldDefn(schemaIndex)->GetType() != schemaFieldType) {
+        std::cerr << "\tError: The schema field type in this layer is incompatible with the previous one. Skipped." << std::endl;
+        continue;
+      }
+    }
     
     // Save the field names and types
 		for (int currentField = 0; currentField < layerDefinition->GetFieldCount(); currentField++) {
@@ -1269,7 +1269,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 		std::cout << "\tError: Could not create file." << std::endl;
 		return false;
 	}
-
+  
 	OGRLayer *layer = dataSource->CreateLayer("polygons", spatialReference, wkbPolygon, NULL);
 	if (layer == NULL) {
 		std::cout << "\tError: Could not create layer." << std::endl;

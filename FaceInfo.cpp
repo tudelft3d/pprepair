@@ -79,7 +79,7 @@ void FaceInfo::substituteTagsWith(PolygonHandle *handle) {
 }
 
 PolygonHandle * FaceInfo::getOneTag() const {
-    if (tag == NULL) return NULL;
+  if (tag == NULL) return NULL;
 	if (tag->isMultiPolygonHandle()) {
 		return *static_cast<MultiPolygonHandle *>(tag)->getHandles()->begin();
 	} return tag;

@@ -22,7 +22,7 @@
 #include "PolygonHandle.h"
 
 Field::~Field() {
-    
+  
 }
 
 bool Field::operator<(Field &f) {
@@ -211,9 +211,9 @@ const bool PolygonHandle::isMultiPolygonHandle() {
 
 MultiPolygonHandle::MultiPolygonHandle(PolygonHandle *ph) {
 	if (ph->isMultiPolygonHandle()) {
-		for (std::list<PolygonHandle *>::iterator currentHandle = ((MultiPolygonHandle *)ph)->handles.begin(); 
-			 currentHandle != ((MultiPolygonHandle *)ph)->handles.end(); 
-			 ++currentHandle) {
+		for (std::list<PolygonHandle *>::iterator currentHandle = ((MultiPolygonHandle *)ph)->handles.begin();
+         currentHandle != ((MultiPolygonHandle *)ph)->handles.end();
+         ++currentHandle) {
 			handles.push_back(*currentHandle);
 		}
 	} else if (ph != NULL) {
@@ -238,9 +238,9 @@ bool MultiPolygonHandle::hasHandle(PolygonHandle *handle) {
 
 void MultiPolygonHandle::addHandle(PolygonHandle *handle) {
 	if (handle->isMultiPolygonHandle()) {
-		for (std::list<PolygonHandle *>::iterator currentHandle = static_cast<MultiPolygonHandle *>(handle)->handles.begin(); 
-			 currentHandle != static_cast<MultiPolygonHandle *>(handle)->handles.end();
-			 ++currentHandle) {
+		for (std::list<PolygonHandle *>::iterator currentHandle = static_cast<MultiPolygonHandle *>(handle)->handles.begin();
+         currentHandle != static_cast<MultiPolygonHandle *>(handle)->handles.end();
+         ++currentHandle) {
 			handles.push_back(*currentHandle);
 		}
 	} else handles.push_back(handle);
