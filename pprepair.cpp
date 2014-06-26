@@ -20,6 +20,7 @@
  */
 
 #include "PlanarPartition.h"
+#include <tclap/CmdLine.h>
 
 enum RepairMethod {
   VALIDATE_ONLY = -1,
@@ -32,7 +33,53 @@ enum RepairMethod {
   PRIORITY_LIST_EDGEMATCHING = 6
 };
 
-int main(int argc, const char *argv[]) {
+
+int main (int argc, char* const argv[]) {
+  
+  std::vector<std::string> repairMethods;
+  repairMethods.push_back("RRN");
+  repairMethods.push_back("RLB");
+  repairMethods.push_back("PL");
+  repairMethods.push_back("EM");
+  TCLAP::ValuesConstraint<std::string> rmVals(repairMethods);
+  
+  try {
+    TCLAP::CmdLine cmd("Allowed options", ' ', "");
+    
+    TCLAP::MultiArg<std::string> inputDSs     ("i", "input", "input OGR dataset (this can be used more than once)", false, "string");
+    TCLAP::ValueArg<std::string> outputFile   ("o", "output", "output repaired file (OGR format)", false, "","string");
+    TCLAP::ValueArg<std::string> outputErrors ("e", "outerrors", "errors to a shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outputTr     ("t", "outtriangulation", "output triangulation to a shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> repair       ("r", "repair", "repair method used: RRN/RLB/PL/EM", false, "", &rmVals);
+    TCLAP::ValueArg<std::string> priority     ("p", "priority", "priority list for repairing", false, "", "string");
+    TCLAP::ValueArg<std::string> spatialextent("s", "extent", "spatial extent", false, "", "string");
+    
+    TCLAP::SwitchArg             validation   ("v", "validation", "validation only, no repair", cmd, false);
+    
+    cmd.add(inputDSs);
+    cmd.add(outputFile);
+    cmd.add(outputErrors);
+    cmd.add(outputTr);
+    cmd.add(repair);
+    
+    cmd.parse( argc, argv );
+    
+    if ( (validation.getValue()) && (repair.getValue() != "") ) {
+      std::cout << "Cannot validate and repair, only one" << std::endl;
+      return(0);
+    }
+    
+    std::cout << "hugo" << std::endl;
+    
+	}
+  catch (TCLAP::ArgException &e) {
+    std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+  }
+  
+  return(1);
+}
+
+int oldmain(int argc, const char *argv[]) {
   
   time_t startTime = time(NULL);
   PlanarPartition pp;
