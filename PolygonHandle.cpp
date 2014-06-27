@@ -169,16 +169,15 @@ void IntField::setValueFromInt(int v) {
 	contents = v;
 }
 
-PolygonHandle::PolygonHandle(unsigned int si, char *of, unsigned int l, long fid) {
-	schemaIndex = si;
-	originalFile = of;
-	layer = l;
+PolygonHandle::PolygonHandle(OGRFeature* f) {
+  feature = f;
 }
 
 PolygonHandle::~PolygonHandle() {
-	for (unsigned int i = 0; i < fields.size(); ++i) {
-		delete fields[i];
-	}
+  OGRFeature::DestroyFeature(feature);
+//	for (unsigned int i = 0; i < fields.size(); ++i) {
+//		delete fields[i];
+//	}
 }
 
 void PolygonHandle::addField(Field *field) {
@@ -216,15 +215,16 @@ MultiPolygonHandle::MultiPolygonHandle(PolygonHandle *ph) {
          ++currentHandle) {
 			handles.push_back(*currentHandle);
 		}
-	} else if (ph != NULL) {
+	}
+  else if (ph != NULL) {
 		handles.push_back(ph);
 	}
 }
 
 MultiPolygonHandle::~MultiPolygonHandle() {
-	for (unsigned int i = 0; i < fields.size(); ++i) {
-		delete fields[i];
-	}
+//	for (unsigned int i = 0; i < fields.size(); ++i) {
+//		delete fields[i];
+//	}
 }
 
 const bool MultiPolygonHandle::isMultiPolygonHandle() {
@@ -243,7 +243,8 @@ void MultiPolygonHandle::addHandle(PolygonHandle *handle) {
          ++currentHandle) {
 			handles.push_back(*currentHandle);
 		}
-	} else handles.push_back(handle);
+	}
+  else handles.push_back(handle);
 }
 
 const std::list<PolygonHandle *> *MultiPolygonHandle::getHandles() {

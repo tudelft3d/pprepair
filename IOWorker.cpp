@@ -275,11 +275,11 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
       for (std::vector<Polygon>::iterator currentPolygon = polygonsVector.begin(); currentPolygon != polygonsVector.end(); ++currentPolygon) {
 				
 				// Create and save polygon handle
-				PolygonHandle *handle = new PolygonHandle(schemaIndex, fileNames.back(), currentLayer, feature->GetFID());
-				polygons.push_back(handle);
+//				PolygonHandle *handle = new PolygonHandle(schemaIndex, fileNames.back(), currentLayer, feature->GetFID());
+//				polygons.push_back(handle);
 				
 				// Save other attributes to put back later
-				copyFields(feature, handle);
+//				copyFields(feature, handle);
 				
 				// Create edges vector for this handle
 				edgesToTag.push_back(std::pair<std::vector<Triangulation::Vertex_handle>, std::vector<std::vector<Triangulation::Vertex_handle> > >());

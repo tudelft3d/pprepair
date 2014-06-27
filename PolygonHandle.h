@@ -94,7 +94,8 @@ private:
 class PolygonHandle {
 public:
 	// Constructors and destructors
-	PolygonHandle(unsigned int si = 0, char *of = NULL, unsigned int l = 0, long fid = 0);
+//	PolygonHandle(unsigned int si = 0, char *of = NULL, unsigned int l = 0, long fid = 0);
+	PolygonHandle(OGRFeature* f = NULL);
 	virtual ~PolygonHandle();
   
   // References
@@ -117,6 +118,8 @@ protected:
 	// The field to use as schema
 	// (could be changed to a set or regex to represent complex criteria)
 	unsigned int schemaIndex;
+  
+  OGRFeature* feature;
 	
 	// Fields it contains
 	std::vector<Field *> fields;

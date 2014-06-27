@@ -44,9 +44,7 @@ bool PlanarPartition::addOGRdataset(std::string file) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
 		return false;
 	}
-  
   std::cout << "Adding a new dataset to the PP: " << std::endl << file << std::endl;
-  
   std::vector<OGRFeature*> lsInputFeatures;
   getOGRFeatures(file, lsInputFeatures);
 //  validateSingleGeom(lsInputFeatures);
@@ -68,7 +66,6 @@ bool PlanarPartition::addOGRdataset(std::string file) {
 
 
 bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
-
   for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); ++f) {
     std::vector<Polygon> polygonsVector;
     std::vector<std::list<Point> > outerRingsList;
@@ -143,9 +140,8 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
     }
     
     for (std::vector<Polygon>::iterator currentPolygon = polygonsVector.begin(); currentPolygon != polygonsVector.end(); ++currentPolygon) {
-      // Create and save polygon handle
-//      PolygonHandle *handle = new PolygonHandle(schemaIndex, fileNames.back(), currentLayer, feature->GetFID());
-//      polygons.push_back(handle);
+      PolygonHandle *handle = new PolygonHandle(*f);
+      polygons.push_back(handle);
 
       // Create edges vector for this handle
       edgesToTag.push_back(std::pair<std::vector<Triangulation::Vertex_handle>, std::vector<std::vector<Triangulation::Vertex_handle> > >());
