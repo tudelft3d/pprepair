@@ -21,21 +21,234 @@
 
 #include "PlanarPartition.h"
 
+
 PlanarPartition::PlanarPartition() {
 	// Registers drivers for all supported formats in OGR
 	OGRRegisterAll();
-	
 	// Set internal states
 	state = CREATED;
-	
 	// std::cout precision (for debugging)
 	std::cout.setf(std::ios::fixed,std::ios::floatfield);
 	std::cout.precision(6);
 }
 
+
 PlanarPartition::~PlanarPartition() {
 	triangulation.clear();
 }
+
+
+bool PlanarPartition::addOGRdataset(std::string file) {
+  // Check if we have already made changes to the triangulation
+  if (state > TRIANGULATED) {
+    std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
+		return false;
+	}
+  
+  std::cout << "Adding a new dataset to the PP: " << std::endl << file << std::endl;
+  
+  std::vector<OGRFeature*> lsInputFeatures;
+  getOGRFeatures(file, lsInputFeatures);
+//  validateSingleGeom(lsInputFeatures);
+  addFeatures(lsInputFeatures);
+  
+  std::cout << "# of features: " << lsInputFeatures.size() << std::endl;
+  
+  std::cout << "deff: " << lsInputFeatures[0]->GetDefnRef()->GetName() << std::endl;
+  std::cout << "deff: " << lsInputFeatures[0]->GetFID() << std::endl;
+  std::cout << "deff: " << lsInputFeatures[1]->GetFID() << std::endl;
+  std::cout << "same ogrdefn? " << lsInputFeatures[0]->GetDefnRef()->IsSame(lsInputFeatures[1]->GetDefnRef()) << std::endl;
+
+	std::cout << "\tVertices: " << triangulation.number_of_vertices() << std::endl;
+	std::cout << "\tEdges: " << triangulation.tds().number_of_edges() << std::endl;
+	std::cout << "\tTriangles: " << triangulation.number_of_faces() << std::endl;
+
+  return true;
+}
+
+
+bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
+
+  for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); ++f) {
+    std::vector<Polygon> polygonsVector;
+    std::vector<std::list<Point> > outerRingsList;
+    std::vector<std::list<Point> > innerRingsList;
+    switch((*f)->GetGeometryRef()->getGeometryType()) {
+      case wkbPolygon:
+      case wkbPolygon25D: {
+        OGRPolygon *geometry = static_cast<OGRPolygon *>((*f)->GetGeometryRef());
+        outerRingsList.push_back(std::list<Point>());
+        // Get outer ring
+        for (int currentPoint = 0; currentPoint < geometry->getExteriorRing()->getNumPoints(); currentPoint++)
+          outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint),
+                                                geometry->getExteriorRing()->getY(currentPoint)));
+        // Get inner rings
+        innerRingsList.reserve(geometry->getNumInteriorRings());
+        for (int currentRing = 0; currentRing < geometry->getNumInteriorRings(); currentRing++) {
+          innerRingsList.push_back(std::list<Point>());
+          for (int currentPoint = 0; currentPoint < geometry->getInteriorRing(currentRing)->getNumPoints(); currentPoint++) {
+            innerRingsList.back().push_back(Point(geometry->getInteriorRing(currentRing)->getX(currentPoint),
+                                                  geometry->getInteriorRing(currentRing)->getY(currentPoint)));
+          }
+        }
+        
+        Ring oring(outerRingsList[0].begin(), outerRingsList[0].begin());
+        outerRingsList.clear();
+        std::vector<Ring> irings;
+        for (unsigned int currentRing = 0; currentRing < innerRingsList.size(); currentRing++) {
+          irings.push_back(Ring(innerRingsList[currentRing].begin(), innerRingsList[currentRing].end()));
+          innerRingsList[currentRing].clear();
+        }
+        polygonsVector.push_back(Polygon(oring, irings.begin(), irings.end()));
+        break;
+      }
+      case wkbMultiPolygon: {
+        OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*f)->GetGeometryRef());
+        // Check each polygon
+        for (int currentPolygon = 0; currentPolygon < geometry->getNumGeometries(); currentPolygon++) {
+          OGRPolygon *thisGeometry = static_cast<OGRPolygon *>(geometry->getGeometryRef(currentPolygon));
+          outerRingsList.push_back(std::list<Point>());
+          
+          // Get outer ring
+          for (int currentPoint = 0; currentPoint < thisGeometry->getExteriorRing()->getNumPoints(); currentPoint++)
+            outerRingsList.back().push_back(Point(thisGeometry->getExteriorRing()->getX(currentPoint),
+                                                  thisGeometry->getExteriorRing()->getY(currentPoint)));
+          
+          // Get inner rings
+          innerRingsList.reserve(innerRingsList.size()+thisGeometry->getNumInteriorRings());
+          for (int currentRing = 0; currentRing < thisGeometry->getNumInteriorRings(); currentRing++) {
+            innerRingsList.push_back(std::list<Point>());
+            for (int currentPoint = 0; currentPoint < thisGeometry->getInteriorRing(currentRing)->getNumPoints(); currentPoint++) {
+              innerRingsList.back().push_back(Point(thisGeometry->getInteriorRing(currentRing)->getX(currentPoint),
+                                                    thisGeometry->getInteriorRing(currentRing)->getY(currentPoint)));
+            }
+          }
+          Ring oring(outerRingsList[0].begin(), outerRingsList[0].begin());
+          outerRingsList.clear();
+          std::vector<Ring> irings;
+          for (unsigned int currentRing = 0; currentRing < innerRingsList.size(); currentRing++) {
+            irings.push_back(Ring(innerRingsList[currentRing].begin(), innerRingsList[currentRing].end()));
+            innerRingsList[currentRing].clear();
+          }
+          polygonsVector.push_back(Polygon(oring, irings.begin(), irings.end()));
+        }
+        break;
+      }
+        
+      default:
+        std::cerr << "\tFeature #" << (*f)->GetFID() << ": unsupported type (";
+        std::cerr << "). Skipped." << std::endl;
+        continue;
+        break;
+    }
+    
+    for (std::vector<Polygon>::iterator currentPolygon = polygonsVector.begin(); currentPolygon != polygonsVector.end(); ++currentPolygon) {
+      // Create and save polygon handle
+//      PolygonHandle *handle = new PolygonHandle(schemaIndex, fileNames.back(), currentLayer, feature->GetFID());
+//      polygons.push_back(handle);
+
+      // Create edges vector for this handle
+      edgesToTag.push_back(std::pair<std::vector<Triangulation::Vertex_handle>, std::vector<std::vector<Triangulation::Vertex_handle> > >());
+
+      // Insert edges into the triangulation and edges vector
+      for (Ring::Edge_const_iterator currentEdge = currentPolygon->outer_boundary().edges_begin();
+           currentEdge != currentPolygon->outer_boundary().edges_end();
+           ++currentEdge) {
+        Triangulation::Vertex_handle sourceVertex = triangulation.insert(currentEdge->source(), startingSearchFace);
+        startingSearchFace = triangulation.incident_faces(sourceVertex);
+        Triangulation::Vertex_handle targetVertex = triangulation.insert(currentEdge->target(), startingSearchFace);
+        triangulation.insert_constraint(sourceVertex, targetVertex);
+        startingSearchFace = triangulation.incident_faces(targetVertex);
+        edgesToTag.back().first.push_back(sourceVertex);
+      }
+      for (Polygon::Hole_const_iterator currentRing = currentPolygon->holes_begin();
+           currentRing != currentPolygon->holes_end();
+           ++currentRing) {
+        edgesToTag.back().second.push_back(std::vector<Triangulation::Vertex_handle>());
+        for (Ring::Edge_const_iterator currentEdge = currentRing->edges_begin(); currentEdge != currentRing->edges_end(); ++currentEdge) {
+          Triangulation::Vertex_handle sourceVertex = triangulation.insert(currentEdge->source(), startingSearchFace);
+          startingSearchFace = triangulation.incident_faces(sourceVertex);
+          Triangulation::Vertex_handle targetVertex = triangulation.insert(currentEdge->target(), startingSearchFace);
+          triangulation.insert_constraint(sourceVertex, targetVertex);
+          startingSearchFace = triangulation.incident_faces(targetVertex);
+          edgesToTag.back().second.back().push_back(sourceVertex);
+        }
+      }
+    }
+    // Free (some) memory
+    polygonsVector.clear();
+    (*f)->SetGeometry(NULL); //-- we keep that to replace the PolygonHandle
+  }
+  if (triangulation.number_of_faces() > 0) {
+    state = TRIANGULATED;
+  }
+  return true;
+}
+
+
+
+bool PlanarPartition::validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures) {
+  for (std::vector<OGRFeature*>::iterator it = lsOGRFeatures.begin() ; it != lsOGRFeatures.end(); ++it) {
+    switch((*it)->GetGeometryRef()->getGeometryType()) {
+      case wkbPolygon:
+      case wkbPolygon25D: {
+        OGRPolygon *geometry = (OGRPolygon *)(*it)->GetGeometryRef();
+//        OGRPolygon* a = (OGRPolygon *)geometry->clone();
+        break;
+      }
+      case wkbMultiPolygon:
+      case wkbMultiPolygon25D: {
+        OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*it)->GetGeometryRef());
+        for (int cur = 0; cur < geometry->getNumGeometries(); cur++) {
+          OGRPolygon *thisGeometry = (OGRPolygon *)geometry->getGeometryRef(cur);
+//            OGRPolygon* a = (OGRPolygon *)thisGeometry->clone();
+//            lsOGRFeatures.push_back(a);
+        }
+        break;
+      }
+      default: {
+        std::cout << "UNKNOWN GEOMETRY TYPE, skipping feature." << std::endl;
+      }
+    }
+  }
+  return true;
+}
+
+bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures) {
+	OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
+	if (dataSource == NULL) {
+		std::cerr << "Error: Could not open file." << std::endl;
+		return false;
+	}
+	int numberOfLayers = dataSource->GetLayerCount();
+  for (int currentLayer = 0; currentLayer < numberOfLayers; currentLayer++) {
+    OGRLayer *dataLayer = dataSource->GetLayer(currentLayer);
+    dataLayer->ResetReading();
+    unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
+    std::cout << "\tReading layer #" << currentLayer+1 << " (" << numberOfPolygons << " polygons)..." << std::endl;
+    
+    OGRFeature *feature;
+    while ((feature = dataLayer->GetNextFeature()) != NULL) {
+      switch(feature->GetGeometryRef()->getGeometryType()) {
+        case wkbPolygon:
+        case wkbPolygon25D:
+        case wkbMultiPolygon:
+        case wkbMultiPolygon25D:{
+          lsOGRFeatures.push_back(feature->Clone());
+          break;
+        }
+        default: {
+          std::cout << "UNKNOWN GEOMETRY TYPE, skipping feature." << std::endl;
+        }
+      }
+    }
+  }
+  // Free OGR data source
+  OGRDataSource::DestroyDataSource(dataSource);
+  return true;
+}
+
+
 
 bool PlanarPartition::addToTriangulation(const char *file, unsigned int schemaIndex) {
   

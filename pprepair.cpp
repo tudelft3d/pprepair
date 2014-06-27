@@ -42,10 +42,9 @@ int main (int argc, char* const argv[]) {
   repairMethods.push_back("PL");
   repairMethods.push_back("EM");
   TCLAP::ValuesConstraint<std::string> rmVals(repairMethods);
-  
+
+  TCLAP::CmdLine cmd("Allowed options", ' ', "");
   try {
-    TCLAP::CmdLine cmd("Allowed options", ' ', "");
-    
     TCLAP::MultiArg<std::string> inputDSs     ("i", "input", "input OGR dataset (this can be used more than once)", false, "string");
     TCLAP::ValueArg<std::string> outputFile   ("o", "output", "output repaired file (OGR format)", false, "","string");
     TCLAP::ValueArg<std::string> outputErrors ("e", "outerrors", "errors to a shapefile", false, "","string");
@@ -69,12 +68,27 @@ int main (int argc, char* const argv[]) {
       return(0);
     }
     
-    std::cout << "hugo" << std::endl;
+    //-- 
+    PlanarPartition pp;
+    std::vector<std::string> inputs = inputDSs.getValue();
+    
+    for (std::vector<std::string>::iterator it = inputs.begin() ; it != inputs.end(); ++it) {
+      pp.addOGRdataset(*it);
+    }
+    
+    
+//    std::cout << "input files " << inputs.size() << std::endl;
+    
+    
+    
+    
     
 	}
   catch (TCLAP::ArgException &e) {
     std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+    return(0);
   }
+
   
   return(1);
 }

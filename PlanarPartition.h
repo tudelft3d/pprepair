@@ -31,6 +31,8 @@ public:
 	~PlanarPartition();
   
   // Operations
+  bool addOGRdataset(std::string file);
+  
   bool addToTriangulation(const char *file, unsigned int schemaIndex = 0);
   
   bool tagTriangulation();
@@ -59,6 +61,10 @@ public:
   
 private:  // Comment to have access to the triangulation and other data structures from outside
 	// Internal states
+  bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
+  bool validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures);
+  bool addFeatures(std::vector<OGRFeature*> &lsOGRFeatures);
+  
 	enum State {
 		CREATED,
 		TRIANGULATED,
@@ -70,6 +76,12 @@ private:  // Comment to have access to the triangulation and other data structur
   
   // I/O handler
   IOWorker io;
+  
+  std::vector<PolygonHandle *> polygons;
+  // Internal special tags
+	PolygonHandle universe;
+  // Cached values
+  Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
   
   // Generated stuff
 	Triangulation triangulation;
