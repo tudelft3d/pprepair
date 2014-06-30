@@ -37,6 +37,7 @@ enum RepairMethod {
 int main (int argc, char* const argv[]) {
   
   std::vector<std::string> repairMethods;
+  repairMethods.push_back("fix");
   repairMethods.push_back("RRN");
   repairMethods.push_back("RLB");
   repairMethods.push_back("PL");
@@ -75,6 +76,9 @@ int main (int argc, char* const argv[]) {
     for (std::vector<std::string>::iterator it = inputs.begin() ; it != inputs.end(); ++it) {
       pp.addOGRdataset(*it);
     }
+    pp.printInfo();
+    pp.buildPP();
+    pp.printInfo();
     
     
 //    std::cout << "input files " << inputs.size() << std::endl;

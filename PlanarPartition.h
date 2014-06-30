@@ -31,7 +31,10 @@ public:
 	~PlanarPartition();
   
   // Operations
-  bool addOGRdataset(std::string file);
+  bool addOGRdataset(std::string &file);
+  
+  bool buildPP(); //-- this is effectively tagTriangulation()
+
   
   bool addToTriangulation(const char *file, unsigned int schemaIndex = 0);
   
@@ -57,13 +60,14 @@ public:
   bool exportPolygons(const char *file, bool withProvenance);
   bool exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);
   
-  void printInfo();
+  void printInfo(std::ostream &ostr = std::cout);
   
 private:  // Comment to have access to the triangulation and other data structures from outside
 	// Internal states
-  bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
+  bool getOGRFeatures(std::string &file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures);
   bool addFeatures(std::vector<OGRFeature*> &lsOGRFeatures);
+  void tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHandle *handle);
   
 	enum State {
 		CREATED,

@@ -38,7 +38,7 @@ PlanarPartition::~PlanarPartition() {
 }
 
 
-bool PlanarPartition::addOGRdataset(std::string file) {
+bool PlanarPartition::addOGRdataset(std::string &file) {
   // Check if we have already made changes to the triangulation
   if (state > TRIANGULATED) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
@@ -56,10 +56,6 @@ bool PlanarPartition::addOGRdataset(std::string file) {
   std::cout << "deff: " << lsInputFeatures[0]->GetFID() << std::endl;
   std::cout << "deff: " << lsInputFeatures[1]->GetFID() << std::endl;
   std::cout << "same ogrdefn? " << lsInputFeatures[0]->GetDefnRef()->IsSame(lsInputFeatures[1]->GetDefnRef()) << std::endl;
-
-	std::cout << "\tVertices: " << triangulation.number_of_vertices() << std::endl;
-	std::cout << "\tEdges: " << triangulation.tds().number_of_edges() << std::endl;
-	std::cout << "\tTriangles: " << triangulation.number_of_faces() << std::endl;
 
   return true;
 }
@@ -210,7 +206,7 @@ bool PlanarPartition::validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures
   return true;
 }
 
-bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures) {
+bool PlanarPartition::getOGRFeatures(std::string &file, std::vector<OGRFeature*> &lsOGRFeatures) {
 	OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
 	if (dataSource == NULL) {
 		std::cerr << "Error: Could not open file." << std::endl;
@@ -267,6 +263,89 @@ bool PlanarPartition::addToTriangulation(const char *file, unsigned int schemaIn
 	std::cout << "\tTriangles: " << triangulation.number_of_faces() << std::endl;
   
   return returnValue;
+}
+
+
+bool PlanarPartition::buildPP() {
+  if (state < TRIANGULATED) {
+		std::cout << "No triangulation to tag!" << std::endl;
+		return false;
+	} if (state > TRIANGULATED) {
+		std::cout << "Triangulation already tagged!" << std::endl;
+		return false;
+	}
+  
+  std::stack<Triangulation::Face_handle> stack;
+	Triangulation::Vertices_in_constraint_iterator previousVertex, currentVertex;
+	Triangulation::Face_handle currentFace;
+	int incident;
+	bool sameOrder;
+	// Add all edges of a polygon
+	for (unsigned int currentPolygon = 0; currentPolygon < edgesToTag.size(); ++currentPolygon) {
+		
+		// Outer boundary
+		for (unsigned int currentEdge = 0; currentEdge < edgesToTag[currentPolygon].first.size(); ++currentEdge) {
+			previousVertex = triangulation.vertices_in_constraint_begin(edgesToTag[currentPolygon].first[currentEdge],
+                                                                  edgesToTag[currentPolygon].first[(currentEdge+1)%edgesToTag[currentPolygon].first.size()]);
+			// Check if the returned order is the same
+			if ((*previousVertex)->point() == edgesToTag[currentPolygon].first[currentEdge]->point()) sameOrder = true;
+			else sameOrder = false;
+			currentVertex = previousVertex;
+			++currentVertex;
+			while (currentVertex != triangulation.vertices_in_constraint_end(edgesToTag[currentPolygon].first[currentEdge],
+                                                                       edgesToTag[currentPolygon].first[(currentEdge+1)%edgesToTag[currentPolygon].first.size()])) {
+				if (sameOrder) {
+					if (!triangulation.is_edge(*previousVertex, *currentVertex, currentFace, incident)) {
+						std::cout << "\tError: Cannot find adjoining face to an edge from the edge list!" << std::endl;
+						return false;
+					}
+				} else {
+					if (!triangulation.is_edge(*currentVertex, *previousVertex, currentFace, incident)) {
+						std::cout << "\tError: Cannot find adjoining face to an edge from the edge list!" << std::endl;
+						return false;
+					}
+				} previousVertex = currentVertex;
+				++currentVertex;
+				stack.push(currentFace);
+			}
+		}
+		
+		// Free memory for boundaries
+		edgesToTag[currentPolygon].first.clear();
+		edgesToTag[currentPolygon].second.clear();
+		
+		// Expand the tags
+		tagStack(stack, polygons[currentPolygon]);
+	}
+	
+	// Free remaining memory
+	edgesToTag.clear();
+	
+	// Tag the universe
+	currentFace = triangulation.infinite_face();
+	stack.push(currentFace);
+	tagStack(stack, &universe);
+	
+  state = TAGGED;
+  return true;
+}
+
+void PlanarPartition::tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHandle *handle) {
+	while (!stack.empty()) {
+		Triangulation::Face_handle currentFace = stack.top();
+		stack.pop();
+		currentFace->info().addTag(handle);
+		if (!currentFace->neighbor(0)->info().hasTag(handle) && !currentFace->is_constrained(0)) {
+			currentFace->neighbor(0)->info().addTag(handle);
+			stack.push(currentFace->neighbor(0));
+		} if (!currentFace->neighbor(1)->info().hasTag(handle) && !currentFace->is_constrained(1)) {
+			currentFace->neighbor(1)->info().addTag(handle);
+			stack.push(currentFace->neighbor(1));
+		} if (!currentFace->neighbor(2)->info().hasTag(handle) && !currentFace->is_constrained(2)) {
+			currentFace->neighbor(2)->info().addTag(handle);
+			stack.push(currentFace->neighbor(2));
+		}
+	}
 }
 
 bool PlanarPartition::tagTriangulation() {
@@ -587,6 +666,22 @@ bool PlanarPartition::exportTriangulation(const char *file, bool withNumberOfTag
 	return true;
 }
 
-void PlanarPartition::printInfo() {
-  io.insertTriangulationInfo(std::cout, triangulation);
+void PlanarPartition::printInfo(std::ostream &ostr) {
+  
+  std::cout << "\tVertices: " << triangulation.number_of_vertices() << std::endl;
+	std::cout << "\tEdges: " << triangulation.tds().number_of_edges() << std::endl;
+	std::cout << "\tTriangles: " << triangulation.number_of_faces() << std::endl;
+
+	// Number of tags
+	unsigned int untagged = 0, onetag = 0, multipletags = 0, total;
+	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
+		if ((*currentFace).info().hasNoTags()) untagged++;
+		else if ((*currentFace).info().hasOneTag()) onetag++;
+		else multipletags++;
+	}
+  total = onetag + multipletags + untagged;
+  ostr << "\tHoles:    " << untagged << " triangles (" << 100.0*untagged/total << " %)" << std::endl <<
+  "\tOk:       " << onetag << " triangles (" << 100.0*onetag/total << " %)" << std::endl <<
+  "\tOverlaps: " << multipletags << " triangles (" << 100.0*multipletags/total << " %)" << std::endl;
+
 }
