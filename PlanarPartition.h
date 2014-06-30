@@ -32,10 +32,11 @@ public:
   
   // Operations
   bool addOGRdataset(std::string &file);
-  
   bool buildPP(); //-- this is effectively tagTriangulation()
 
-  
+  bool isValid();
+
+  //-- old stuff
   bool addToTriangulation(const char *file, unsigned int schemaIndex = 0);
   
   bool tagTriangulation();
@@ -61,36 +62,37 @@ public:
   bool exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);
   
   void printInfo(std::ostream &ostr = std::cout);
+  int  noPolygons();
   
-private:  // Comment to have access to the triangulation and other data structures from outside
-	// Internal states
-  bool getOGRFeatures(std::string &file, std::vector<OGRFeature*> &lsOGRFeatures);
+private:  
+  bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures);
   bool addFeatures(std::vector<OGRFeature*> &lsOGRFeatures);
   void tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHandle *handle);
   
-	enum State {
-		CREATED,
-		TRIANGULATED,
-		TAGGED,
-		REPAIRED,
-		RECONSTRUCTED
-	};
-  State state;
+  Triangulation triangulation;
+  TaggingVector edgesToTag;
+  std::vector<std::pair<PolygonHandle *, Polygon> > outputPolygons;
   
   // I/O handler
   IOWorker io;
   
   std::vector<PolygonHandle *> polygons;
   // Internal special tags
-	PolygonHandle universe;
+  PolygonHandle universe;
   // Cached values
   Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
   
   // Generated stuff
-	Triangulation triangulation;
-  TaggingVector edgesToTag;
-  std::vector<std::pair<PolygonHandle *, Polygon> > outputPolygons;
+  
+  enum State {
+    CREATED,
+    TRIANGULATED,
+    TAGGED,
+    REPAIRED,
+    RECONSTRUCTED
+  };
+  State state;
 };
 
 #endif

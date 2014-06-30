@@ -37,62 +37,58 @@ enum RepairMethod {
 int main (int argc, char* const argv[]) {
   
   std::vector<std::string> repairMethods;
-  repairMethods.push_back("fix");
-  repairMethods.push_back("RRN");
-  repairMethods.push_back("RLB");
-  repairMethods.push_back("PL");
-  repairMethods.push_back("EM");
+  repairMethods.push_back("RN"); //-- random neighbour
+  repairMethods.push_back("LB"); //-- longest boundary
+  repairMethods.push_back("PL"); //-- priority list
+  repairMethods.push_back("EM"); //-- edge-matching
   TCLAP::ValuesConstraint<std::string> rmVals(repairMethods);
 
   TCLAP::CmdLine cmd("Allowed options", ' ', "");
   try {
-    TCLAP::MultiArg<std::string> inputDSs     ("i", "input", "input OGR dataset (this can be used more than once)", false, "string");
+    TCLAP::MultiArg<std::string> inputDSs     ("i", "input", "input OGR dataset (this can be used more than once)", true, "string");
+    TCLAP::ValueArg<std::string> spatialextent("s", "extent", "spatial extent", false, "", "string");
     TCLAP::ValueArg<std::string> outputFile   ("o", "output", "output repaired file (OGR format)", false, "","string");
     TCLAP::ValueArg<std::string> outputErrors ("e", "outerrors", "errors to a shapefile", false, "","string");
     TCLAP::ValueArg<std::string> outputTr     ("t", "outtriangulation", "output triangulation to a shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> repair       ("r", "repair", "repair method used: RRN/RLB/PL/EM", false, "", &rmVals);
     TCLAP::ValueArg<std::string> priority     ("p", "priority", "priority list for repairing", false, "", "string");
-    TCLAP::ValueArg<std::string> spatialextent("s", "extent", "spatial extent", false, "", "string");
-    
-    TCLAP::SwitchArg             validation   ("v", "validation", "validation only, no repair", cmd, false);
+    TCLAP::ValueArg<std::string> repair       ("r", "repair", "repair method used: RN/LB/PL/EM", false, "", &rmVals);
+    TCLAP::SwitchArg             validation   ("v", "validation", "validation only (gaps and overlaps reported)", false);
     
     cmd.add(inputDSs);
+    cmd.add(spatialextent);
     cmd.add(outputFile);
     cmd.add(outputErrors);
     cmd.add(outputTr);
-    cmd.add(repair);
+    cmd.add(priority);
+    cmd.xorAdd(repair, validation);
     
     cmd.parse( argc, argv );
     
-    if ( (validation.getValue()) && (repair.getValue() != "") ) {
-      std::cout << "Cannot validate and repair, only one" << std::endl;
-      return(0);
-    }
-    
-    //-- 
-    PlanarPartition pp;
+    PlanarPartition pp;      
     std::vector<std::string> inputs = inputDSs.getValue();
-    
     for (std::vector<std::string>::iterator it = inputs.begin() ; it != inputs.end(); ++it) {
       pp.addOGRdataset(*it);
     }
-    pp.printInfo();
+    std::cout << "# polygons: " << pp.noPolygons() << std::endl;
     pp.buildPP();
+    // pp.printInfo();
+    
+    //-- validation only
+    if (validation.getValue() == true) {
+      if (pp.isValid() == false) {
+        std::cout << "Planar partition NOT valid." << std::endl;
+        pp.printInfo();
+      }
+      else {
+        std::cout << "Planar partition VALID." << std::endl;
+      }
+    }
     pp.printInfo();
-    
-    
-//    std::cout << "input files " << inputs.size() << std::endl;
-    
-    
-    
-    
-    
 	}
   catch (TCLAP::ArgException &e) {
     std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
     return(0);
   }
-
   
   return(1);
 }

@@ -37,6 +37,9 @@ PlanarPartition::~PlanarPartition() {
 	triangulation.clear();
 }
 
+int PlanarPartition::noPolygons() {
+  return polygons.size();
+}
 
 bool PlanarPartition::addOGRdataset(std::string &file) {
   // Check if we have already made changes to the triangulation
@@ -44,25 +47,25 @@ bool PlanarPartition::addOGRdataset(std::string &file) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
 		return false;
 	}
-  std::cout << "Adding a new dataset to the PP: " << std::endl << file << std::endl;
+  std::cout << "Adding a new dataset to the PP: " << std::endl << "\t" << file << std::endl;
   std::vector<OGRFeature*> lsInputFeatures;
   getOGRFeatures(file, lsInputFeatures);
+//  std::cout << lsInputFeatures.size() << std::endl;
 //  validateSingleGeom(lsInputFeatures);
   addFeatures(lsInputFeatures);
   
-  std::cout << "# of features: " << lsInputFeatures.size() << std::endl;
-  
-  std::cout << "deff: " << lsInputFeatures[0]->GetDefnRef()->GetName() << std::endl;
-  std::cout << "deff: " << lsInputFeatures[0]->GetFID() << std::endl;
-  std::cout << "deff: " << lsInputFeatures[1]->GetFID() << std::endl;
-  std::cout << "same ogrdefn? " << lsInputFeatures[0]->GetDefnRef()->IsSame(lsInputFeatures[1]->GetDefnRef()) << std::endl;
+  // std::cout << "# of features: " << lsInputFeatures.size() << std::endl;
+  // std::cout << "deff: " << lsInputFeatures[0]->GetDefnRef()->GetName() << std::endl;
+  // std::cout << "deff: " << lsInputFeatures[0]->GetFID() << std::endl;
+  // std::cout << "deff: " << lsInputFeatures[1]->GetFID() << std::endl;
+  // std::cout << "same ogrdefn? " << lsInputFeatures[0]->GetDefnRef()->IsSame(lsInputFeatures[1]->GetDefnRef()) << std::endl;
 
   return true;
 }
 
 
 bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
-  for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); ++f) {
+  for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); f++) {
     std::vector<Polygon> polygonsVector;
     std::vector<std::list<Point> > outerRingsList;
     std::vector<std::list<Point> > innerRingsList;
@@ -84,8 +87,7 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
                                                   geometry->getInteriorRing(currentRing)->getY(currentPoint)));
           }
         }
-        
-        Ring oring(outerRingsList[0].begin(), outerRingsList[0].begin());
+        Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
         outerRingsList.clear();
         std::vector<Ring> irings;
         for (unsigned int currentRing = 0; currentRing < innerRingsList.size(); currentRing++) {
@@ -116,6 +118,7 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
                                                     thisGeometry->getInteriorRing(currentRing)->getY(currentPoint)));
             }
           }
+          // TODO: fix here for multipolygon
           Ring oring(outerRingsList[0].begin(), outerRingsList[0].begin());
           outerRingsList.clear();
           std::vector<Ring> irings;
@@ -135,7 +138,8 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
         break;
     }
     
-    for (std::vector<Polygon>::iterator currentPolygon = polygonsVector.begin(); currentPolygon != polygonsVector.end(); ++currentPolygon) {
+    std::cout << "# of polygons: " << polygonsVector.size() << std::endl;
+    for (std::vector<Polygon>::iterator currentPolygon = polygonsVector.begin(); currentPolygon != polygonsVector.end(); currentPolygon++) {
       PolygonHandle *handle = new PolygonHandle(*f);
       polygons.push_back(handle);
 
@@ -206,7 +210,7 @@ bool PlanarPartition::validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures
   return true;
 }
 
-bool PlanarPartition::getOGRFeatures(std::string &file, std::vector<OGRFeature*> &lsOGRFeatures) {
+bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures) {
 	OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
 	if (dataSource == NULL) {
 		std::cerr << "Error: Could not open file." << std::endl;
@@ -217,7 +221,7 @@ bool PlanarPartition::getOGRFeatures(std::string &file, std::vector<OGRFeature*>
     OGRLayer *dataLayer = dataSource->GetLayer(currentLayer);
     dataLayer->ResetReading();
     unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
-    std::cout << "\tReading layer #" << currentLayer+1 << " (" << numberOfPolygons << " polygons)..." << std::endl;
+    std::cout << "\tReading layer #" << currentLayer+1 << " (" << numberOfPolygons << " polygons)" << std::endl;
     
     OGRFeature *feature;
     while ((feature = dataLayer->GetNextFeature()) != NULL) {
@@ -237,13 +241,13 @@ bool PlanarPartition::getOGRFeatures(std::string &file, std::vector<OGRFeature*>
   }
   // Free OGR data source
   OGRDataSource::DestroyDataSource(dataSource);
+  std::cout << "\tdone." << std::endl;
   return true;
 }
 
 
 
 bool PlanarPartition::addToTriangulation(const char *file, unsigned int schemaIndex) {
-  
   // Check if we have already made changes to the triangulation
   if (state > TRIANGULATED) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
@@ -275,6 +279,7 @@ bool PlanarPartition::buildPP() {
 		return false;
 	}
   
+  std::cout << "Tagging the triangles..." << std::endl;
   std::stack<Triangulation::Face_handle> stack;
 	Triangulation::Vertices_in_constraint_iterator previousVertex, currentVertex;
 	Triangulation::Face_handle currentFace;
@@ -309,18 +314,15 @@ bool PlanarPartition::buildPP() {
 				stack.push(currentFace);
 			}
 		}
-		
 		// Free memory for boundaries
 		edgesToTag[currentPolygon].first.clear();
 		edgesToTag[currentPolygon].second.clear();
-		
 		// Expand the tags
 		tagStack(stack, polygons[currentPolygon]);
 	}
 	
 	// Free remaining memory
 	edgesToTag.clear();
-	
 	// Tag the universe
 	currentFace = triangulation.infinite_face();
 	stack.push(currentFace);
@@ -329,6 +331,7 @@ bool PlanarPartition::buildPP() {
   state = TAGGED;
   return true;
 }
+
 
 void PlanarPartition::tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHandle *handle) {
 	while (!stack.empty()) {
@@ -375,17 +378,37 @@ bool PlanarPartition::makeAllHolesValid() {
   return io.makeAllHolesValid(triangulation);
 }
 
+bool PlanarPartition::isValid() {
+  if (state < TAGGED) {
+    std::cout << "Triangulation not yet tagged. Cannot check!" << std::endl;
+    return false;
+  } 
+  if (state >= REPAIRED) {
+    return true;
+  }
+  for (Triangulation::Finite_faces_iterator f = triangulation.finite_faces_begin(); f != triangulation.finite_faces_end(); ++f) {
+    if (!(*f).info().hasOneTag()) {
+      return false;  
+    }
+  }
+  state = REPAIRED;
+  return true;
+}
+
+
 bool PlanarPartition::checkValidity() {
-	
 	if (state < TAGGED) {
 		std::cout << "Triangulation not yet tagged. Cannot check!" << std::endl;
 		return false;
-	} if (state >= REPAIRED) return true;
-	
+	} 
+  if (state >= REPAIRED) 
+    return true;
+
 	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
-		if (!(*currentFace).info().hasOneTag()) return true;	// true means successful operation, not that everything is valid
+		if (!(*currentFace).info().hasOneTag()) {
+      return true;	// true means successful operation, not that everything is valid
+    }
 	}
-	
 	state = REPAIRED;
 	return true;
 }
