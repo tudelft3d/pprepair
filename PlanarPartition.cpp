@@ -75,14 +75,14 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
         OGRPolygon *geometry = static_cast<OGRPolygon *>((*f)->GetGeometryRef());
         outerRingsList.push_back(std::list<Point>());
         // Get outer ring
-        for (int currentPoint = 0; currentPoint < geometry->getExteriorRing()->getNumPoints(); currentPoint++)
+        for (int currentPoint = 0; currentPoint < (geometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
           outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint),
                                                 geometry->getExteriorRing()->getY(currentPoint)));
         // Get inner rings
         innerRingsList.reserve(geometry->getNumInteriorRings());
         for (int currentRing = 0; currentRing < geometry->getNumInteriorRings(); currentRing++) {
           innerRingsList.push_back(std::list<Point>());
-          for (int currentPoint = 0; currentPoint < geometry->getInteriorRing(currentRing)->getNumPoints(); currentPoint++) {
+          for (int currentPoint = 0; currentPoint < (geometry->getInteriorRing(currentRing)->getNumPoints() - 1); currentPoint++) {
             innerRingsList.back().push_back(Point(geometry->getInteriorRing(currentRing)->getX(currentPoint),
                                                   geometry->getInteriorRing(currentRing)->getY(currentPoint)));
           }
@@ -105,7 +105,7 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
           outerRingsList.push_back(std::list<Point>());
           
           // Get outer ring
-          for (int currentPoint = 0; currentPoint < thisGeometry->getExteriorRing()->getNumPoints(); currentPoint++)
+          for (int currentPoint = 0; currentPoint < (thisGeometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
             outerRingsList.back().push_back(Point(thisGeometry->getExteriorRing()->getX(currentPoint),
                                                   thisGeometry->getExteriorRing()->getY(currentPoint)));
           
@@ -113,7 +113,7 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
           innerRingsList.reserve(innerRingsList.size()+thisGeometry->getNumInteriorRings());
           for (int currentRing = 0; currentRing < thisGeometry->getNumInteriorRings(); currentRing++) {
             innerRingsList.push_back(std::list<Point>());
-            for (int currentPoint = 0; currentPoint < thisGeometry->getInteriorRing(currentRing)->getNumPoints(); currentPoint++) {
+            for (int currentPoint = 0; currentPoint < (thisGeometry->getInteriorRing(currentRing)->getNumPoints() - 1); currentPoint++) {
               innerRingsList.back().push_back(Point(thisGeometry->getInteriorRing(currentRing)->getX(currentPoint),
                                                     thisGeometry->getInteriorRing(currentRing)->getY(currentPoint)));
             }
@@ -138,7 +138,6 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
         break;
     }
     
-    std::cout << "# of polygons: " << polygonsVector.size() << std::endl;
     for (std::vector<Polygon>::iterator currentPolygon = polygonsVector.begin(); currentPolygon != polygonsVector.end(); currentPolygon++) {
       PolygonHandle *handle = new PolygonHandle(*f);
       polygons.push_back(handle);

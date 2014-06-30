@@ -46,10 +46,10 @@ int main (int argc, char* const argv[]) {
   TCLAP::CmdLine cmd("Allowed options", ' ', "");
   try {
     TCLAP::MultiArg<std::string> inputDSs     ("i", "input", "input OGR dataset (this can be used more than once)", true, "string");
-    TCLAP::ValueArg<std::string> spatialextent("s", "extent", "spatial extent", false, "", "string");
+    TCLAP::ValueArg<std::string> spatialextent("e", "extent", "spatial extent", false, "", "string");
     TCLAP::ValueArg<std::string> outputFile   ("o", "output", "output repaired file (OGR format)", false, "","string");
-    TCLAP::ValueArg<std::string> outputErrors ("e", "outerrors", "errors to a shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> outputTr     ("t", "outtriangulation", "output triangulation to a shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outputErrors ("", "outerrors", "errors to a shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outputTr     ("", "outtriangulation", "output triangulation to a shapefile", false, "","string");
     TCLAP::ValueArg<std::string> priority     ("p", "priority", "priority list for repairing", false, "", "string");
     TCLAP::ValueArg<std::string> repair       ("r", "repair", "repair method used: RN/LB/PL/EM", false, "", &rmVals);
     TCLAP::SwitchArg             validation   ("v", "validation", "validation only (gaps and overlaps reported)", false);
@@ -70,6 +70,7 @@ int main (int argc, char* const argv[]) {
       pp.addOGRdataset(*it);
     }
     std::cout << "# polygons: " << pp.noPolygons() << std::endl;
+    pp.printInfo();
     pp.buildPP();
     // pp.printInfo();
     
