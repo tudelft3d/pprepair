@@ -98,6 +98,7 @@ public:
 	PolygonHandle(OGRFeature* f = NULL);
 	virtual ~PolygonHandle();
   
+  OGRFeature* feature;
   // References
 	char * getOriginalFile();
 	unsigned int getLayer();
@@ -118,8 +119,6 @@ protected:
 	// The field to use as schema
 	// (could be changed to a set or regex to represent complex criteria)
 	unsigned int schemaIndex;
-  
-  OGRFeature* feature;
 	
 	// Fields it contains
 	std::vector<Field *> fields;

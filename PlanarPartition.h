@@ -38,7 +38,7 @@ public:
   bool repair(const std::string &method, bool alsoUniverse = true, const std::string &priority = std::string());
 
   bool reconstructPolygons(bool removeVertices = false);
-  bool exportPolygons(const char *file, bool withProvenance);
+  bool exportPolygonsSHP();
   bool exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);
   
   void printInfo(std::ostream &ostr = std::cout);
@@ -80,6 +80,10 @@ private:
   bool addFeatures(std::vector<OGRFeature*> &lsOGRFeatures);
   void tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHandle *handle);
   void addToLength(std::map<PolygonHandle *, double> &lengths, PolygonHandle *ph, double length);
+  void removeVertices();
+  void removeConstraints();
+  std::list<Triangulation::Vertex_handle>* getBoundary(Triangulation::Face_handle face, int edge, PolygonHandle *polygon);
+  
   
   // I/O handler
   IOWorker io;

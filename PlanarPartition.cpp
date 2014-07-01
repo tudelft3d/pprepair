@@ -825,8 +825,8 @@ bool PlanarPartition::matchSchemata() {
 	return returnValue;
 }
 
+
 bool PlanarPartition::reconstructPolygons(bool removeVertices) {
-  
   if (state < TAGGED) {
 		std::cout << "Triangulation not tagged. Cannot reconstruct!" << std::endl;
 		return false;
@@ -835,36 +835,258 @@ bool PlanarPartition::reconstructPolygons(bool removeVertices) {
 		std::cout << "Polygons already reconstructed!" << std::endl;
 		return false;
 	}
-	
 	std::cout << "Reconstructing polygons (geometry)..." << std::endl;
 	time_t thisTime = time(NULL);
   
-  io.removeConstraints(triangulation);
-  if (removeVertices) io.removeVertices(triangulation);
-  bool returnValue = io.reconstructPolygons(triangulation, outputPolygons);
+  this->removeConstraints();
+  if (removeVertices)
+    this->removeVertices();
   
-  // Mark as reconstructed
-	if (returnValue) state = RECONSTRUCTED;
-	
+  for (Triangulation::Finite_faces_iterator seedingFace = triangulation.finite_faces_begin(); seedingFace != triangulation.finite_faces_end(); ++seedingFace) {
+    PolygonHandle *currentTag = seedingFace->info().getOneTag();
+    if (currentTag == NULL) continue;
+    
+    // STEP 1: Find a suitable seeding triangle (connected to the outer boundary)
+    if (currentTag == &universe) {
+      seedingFace->info().removeAllTags();
+      continue;
+    } if (seedingFace->neighbor(0)->info().getOneTag() == currentTag &&
+          seedingFace->neighbor(1)->info().getOneTag() == currentTag &&
+          seedingFace->neighbor(2)->info().getOneTag() == currentTag) continue;
+    
+    // STEP 2: Get boundary
+    seedingFace->info().removeAllTags();
+    std::list<Triangulation::Vertex_handle> vertices;
+    if (seedingFace->neighbor(2)->info().hasTag(currentTag)) {
+      seedingFace->neighbor(2)->info().removeAllTags();
+      std::list<Triangulation::Vertex_handle> *l2 = getBoundary(seedingFace->neighbor(2), seedingFace->neighbor(2)->index(seedingFace), currentTag);
+      vertices.splice(vertices.end(), *l2);
+      delete l2;
+    } vertices.push_back(seedingFace->vertex(0));
+    if (seedingFace->neighbor(1)->info().hasTag(currentTag)) {
+      seedingFace->neighbor(1)->info().removeAllTags();
+      std::list<Triangulation::Vertex_handle> *l1 = getBoundary(seedingFace->neighbor(1), seedingFace->neighbor(1)->index(seedingFace), currentTag);
+      vertices.splice(vertices.end(), *l1);
+      delete l1;
+    } vertices.push_back(seedingFace->vertex(2));
+    if (seedingFace->neighbor(0)->info().hasTag(currentTag)) {
+      seedingFace->neighbor(0)->info().removeAllTags();
+      std::list<Triangulation::Vertex_handle> *l0 = getBoundary(seedingFace->neighbor(0), seedingFace->neighbor(0)->index(seedingFace), currentTag);
+      vertices.splice(vertices.end(), *l0);
+      delete l0;
+    } vertices.push_back(seedingFace->vertex(1));
+    
+    // STEP 3: Find cutting vertices
+    std::set<Triangulation::Vertex_handle> visitedVertices;
+    std::set<Triangulation::Vertex_handle> repeatedVertices;
+    for (std::list<Triangulation::Vertex_handle>::iterator currentVertex = vertices.begin(); currentVertex != vertices.end(); ++currentVertex) {
+      if (!visitedVertices.insert(*currentVertex).second) repeatedVertices.insert(*currentVertex);
+    } visitedVertices.clear();
+    
+    // STEP 4: Cut and join rings in the correct order
+    std::list<std::list<Triangulation::Vertex_handle> *> rings;
+    std::stack<std::list<Triangulation::Vertex_handle> *> chainsStack;
+    std::map<Triangulation::Vertex_handle, std::list<Triangulation::Vertex_handle> *> vertexChainMap;
+    std::list<Triangulation::Vertex_handle> *newChain = new std::list<Triangulation::Vertex_handle>();
+    
+    // New vertex
+    for (std::list<Triangulation::Vertex_handle>::iterator currentVertex = vertices.begin(); currentVertex != vertices.end(); ++currentVertex) {
+      // New chain
+      if (repeatedVertices.count(*currentVertex) > 0) {
+        // Closed by itself
+        if (newChain->front() == *currentVertex) {
+          // Degenerate (insufficient vertices to be valid)
+          if (newChain->size() < 3) delete newChain;
+          else {
+            std::list<Triangulation::Vertex_handle>::iterator secondElement = newChain->begin();
+            ++secondElement;
+            // Degenerate (zero area)
+            if (newChain->back() == *secondElement) delete newChain;
+            // Valid
+            else rings.push_back(newChain);
+          }
+        }
+        // Open by itself
+        else {
+          // Closed with others in stack
+          if (vertexChainMap.count(*currentVertex)) {
+            while (chainsStack.top() != vertexChainMap[*currentVertex]) {
+              newChain->splice(newChain->begin(), *chainsStack.top());
+              chainsStack.pop();
+            } newChain->splice(newChain->begin(), *chainsStack.top());
+            chainsStack.pop();
+            vertexChainMap.erase(*currentVertex);
+            // Degenerate (insufficient vertices to be valid)
+            if (newChain->size() < 3) delete newChain;
+            else {
+              std::list<Triangulation::Vertex_handle>::iterator secondElement = newChain->begin();
+              ++secondElement;
+              // Degenerate (zero area)
+              if (newChain->back() == *secondElement) delete newChain;
+              // Valid
+              else rings.push_back(newChain);
+            }
+          }
+          // Open
+          else {
+            // Not first chain
+            if (repeatedVertices.count(newChain->front()) > 0)
+              vertexChainMap[newChain->front()] = newChain;
+            chainsStack.push(newChain);
+          }
+        }
+        newChain = new std::list<Triangulation::Vertex_handle>();
+      }
+      newChain->push_back(*currentVertex);
+    }
+    
+    // Final ring
+    while (chainsStack.size() > 0) {
+      newChain->splice(newChain->begin(), *chainsStack.top());
+      chainsStack.pop();
+    }
+    
+    // Degenerate (insufficient vertices to be valid)
+    if (newChain->size() < 3) {
+      delete newChain;
+    }
+    else {
+      std::list<Triangulation::Vertex_handle>::iterator secondElement = newChain->begin();
+      ++secondElement;
+      // Degenerate (zero area)
+      if (newChain->back() == *secondElement)
+        delete newChain;
+      // Valid
+      else
+        rings.push_back(newChain);
+    }
+    
+    if (chainsStack.size() > 0)
+      std::cout << "Error: Stack has " << chainsStack.size() << " elements. Should be empty." << std::endl;
+    
+    // STEP 5: Make a polygon from this list and save it
+    std::vector<Ring> innerRings;
+    Ring outerRing;
+    for (std::list<std::list<Triangulation::Vertex_handle> *>::iterator currentRing = rings.begin(); currentRing != rings.end(); ++currentRing) {
+      Ring newRing;
+      for (std::list<Triangulation::Vertex_handle>::iterator currentPoint = (*currentRing)->begin(); currentPoint != (*currentRing)->end(); ++currentPoint) {
+        newRing.push_back((*currentPoint)->point());
+      }
+      if (newRing.is_clockwise_oriented())
+        outerRing = newRing;
+      else
+        innerRings.push_back(newRing);
+    }
+    outputPolygons.push_back(std::pair<PolygonHandle *, Polygon>(currentTag, Polygon(outerRing, innerRings.begin(), innerRings.end())));
+    // Free memory from the chains
+    for (std::list<std::list<Triangulation::Vertex_handle> *>::iterator currentRing = rings.begin(); currentRing != rings.end(); ++currentRing) {
+      delete *currentRing;
+    }
+  }
+  state = RECONSTRUCTED;
 	std::cout << "Polygons reconstructed (" << time(NULL)-thisTime << " s)." << std::endl;
-  return returnValue;
+  return true;
 }
 
-bool PlanarPartition::exportPolygons(const char *file, bool withProvenance) {
-	
+
+bool PlanarPartition::exportPolygonsSHP() {
 	if (state < RECONSTRUCTED) {
-		std::cout << "Polygons have not been reconstructed. Nothing to export!" << std::endl;
+		std::cout << "Polygons have not been reconstructed yet. Nothing to export!" << std::endl;
 		return false;
 	}
 	
 	std::cout << "Exporting polygons..." << std::endl;
 	time_t thisTime = time(NULL);
   
-  bool returnValue = io.exportPolygons(outputPolygons, file, withProvenance);
-	
+//-- 1. get all the diff OGRFeatureDefn
+  std::set<OGRFeatureDefn*> allFDefs;
+  for (std::vector<std::pair<PolygonHandle *, Polygon> >::iterator it = outputPolygons.begin();
+       it != outputPolygons.end();
+       ++it) {
+    allFDefs.insert(it->first->feature->GetDefnRef());
+  }
+
+//-- 2. create new a SHP for each one
+  std::map<OGRFeatureDefn*,OGRDataSource*> allshps;
+  std::map<OGRFeatureDefn*,OGRDataSource*>::iterator allshpsit;
+  for (std::set<OGRFeatureDefn*>::iterator it = allFDefs.begin(); it != allFDefs.end(); ++it) {
+    const char *driverName = "ESRI Shapefile";
+    OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
+    if (driver == NULL) {
+      std::cout << "\tError: OGR Shapefile driver not found." << std::endl;
+      return false;
+    }
+    std::string tmp = (*it)->GetName();
+    std::string outname = "/Users/hugo/temp/" + tmp + "-out.shp";
+    OGRDataSource *dataSource = driver->Open(outname.c_str(), false);
+    allshps[*it] = dataSource;
+    if (dataSource != NULL) {
+      std::cout << "\tOverwriting file..." << std::endl;
+      if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
+        std::cout << "\tError: Couldn't erase file with same name." << std::endl;
+        return false;
+      } OGRDataSource::DestroyDataSource(dataSource);
+    }
+    std::cout << "\tWriting file... " << std::endl;
+    dataSource = driver->CreateDataSource(outname.c_str(), NULL);
+    if (dataSource == NULL) {
+      std::cout << "\tError: Could not create file." << std::endl;
+      return false;
+    }
+    //	OGRLayer *layer = dataSource->CreateLayer("polygons", spatialReference, wkbPolygon, NULL);
+    OGRLayer *layer = dataSource->CreateLayer("polygons", NULL, wkbPolygon, NULL);
+    if (layer == NULL) {
+      std::cout << "\tError: Could not create layer." << std::endl;
+      return false;
+    }
+  }
+
+  for (std::vector<std::pair<PolygonHandle *, Polygon> >::iterator currentPolygon = outputPolygons.begin();
+       currentPolygon != outputPolygons.end();
+       ++currentPolygon) {
+		OGRPolygon polygon;
+		OGRLinearRing outerRing;
+    OGRFeature* f = currentPolygon->first->feature;
+    allshpsit = allshps.find(f->GetDefnRef());
+    OGRLayer *layer = allshpsit->second->GetLayer(0);
+  
+    if (currentPolygon->second.outer_boundary().size() < 1)
+      continue;
+		for (Ring::Vertex_iterator currentVertex = currentPolygon->second.outer_boundary().vertices_begin();
+         currentVertex != currentPolygon->second.outer_boundary().vertices_end();
+         ++currentVertex) {
+			outerRing.addPoint(CGAL::to_double(currentVertex->x()), CGAL::to_double(currentVertex->y()));
+		}
+    outerRing.addPoint(CGAL::to_double(currentPolygon->second.outer_boundary().vertex(0).x()),
+                       CGAL::to_double(currentPolygon->second.outer_boundary().vertex(0).y()));
+		polygon.addRing(&outerRing);
+		for (Polygon::Hole_const_iterator currentRing = currentPolygon->second.holes_begin(); currentRing != currentPolygon->second.holes_end(); ++currentRing) {
+			OGRLinearRing innerRing;
+			for (Ring::Vertex_iterator currentVertex = currentRing->vertices_begin(); currentVertex != currentRing->vertices_end(); ++currentVertex) {
+				innerRing.addPoint(CGAL::to_double(currentVertex->x()), CGAL::to_double(currentVertex->y()));
+			}
+      innerRing.addPoint(CGAL::to_double(currentRing->vertex(0).x()), CGAL::to_double(currentRing->vertex(0).y()));
+			polygon.addRing(&innerRing);
+		}
+    
+//    OGRFeature *feature = OGRFeature::CreateFeature(layer->GetLayerDefn());
+		
+		f->SetGeometry(&polygon);
+		// Create OGR feature
+		if (layer->CreateFeature(f) != OGRERR_NONE)
+      std::cout << "\tError: Could not create feature." << std::endl;
+		OGRFeature::DestroyFeature(f); //-- TODO: free the features? hmmmm...
+	}
+  
+  //-- clear memory for all the created SHP
+  for (allshpsit = allshps.begin(); allshpsit != allshps.end(); ++allshpsit) {
+    OGRDataSource::DestroyDataSource(allshpsit->second);
+  }
+  
 	std::cout << "Polygons exported (" << time(NULL)-thisTime << " s)." << std::endl;
-  return returnValue;
+  return true;
 }
+
 
 bool PlanarPartition::exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance) {
 	
@@ -879,8 +1101,9 @@ bool PlanarPartition::exportTriangulation(const char *file, bool withNumberOfTag
 	return true;
 }
 
-// TODO: change so that it prints for regions not triangles?
+
 void PlanarPartition::printInfo(std::ostream &ostr) {
+// TODO: change so that it prints for regions not triangles?
   std::cout << "*** Triangulation ***" << std::endl;
   std::cout << "\tVertices: " << triangulation.number_of_vertices() << std::endl;
 	std::cout << "\tEdges: " << triangulation.tds().number_of_edges() << std::endl;
@@ -898,4 +1121,85 @@ void PlanarPartition::printInfo(std::ostream &ostr) {
   "\tOk:       " << onetag << " triangles (" << 100.0*onetag/total << " %)" << std::endl <<
   "\tOverlaps: " << multipletags << " triangles (" << 100.0*multipletags/total << " %)" << std::endl;
   std::cout << "*********************" << std::endl;
+}
+
+void PlanarPartition::removeVertices() {
+  // Remove unnecessary vertices completely surrounded by the same polygon
+  // TODO: This can be optimised
+  std::cout << "\tBefore: " << triangulation.number_of_faces() << " triangles in the triangulation" << std::endl;
+  
+  unsigned long long int surroundedVerticesRemoved = 0;
+  Triangulation::Finite_vertices_iterator currentVertex = triangulation.finite_vertices_begin();
+  while (currentVertex != triangulation.finite_vertices_end()) {
+    if (triangulation.are_there_incident_constraints(currentVertex)) {
+      ++currentVertex;
+      continue;
+    }
+    
+    Triangulation::Face_circulator firstFace = triangulation.incident_faces(currentVertex), currentFace = firstFace;
+    ++currentFace;
+    bool allEqual = true;
+    while (currentFace != firstFace) {
+      if (currentFace->info().getOneTag() != firstFace->info().getOneTag()) {
+        allEqual = false;
+        break;
+      } ++currentFace;
+    }
+    
+    if (allEqual) {
+      Triangulation::Finite_vertices_iterator vertexToRemove = currentVertex;
+      ++currentVertex;
+      
+      Point location = vertexToRemove->point();
+      //Triangulation::Face_handle approximateLocation;
+      PolygonHandle *tag = triangulation.incident_faces(vertexToRemove)->info().getOneTag();
+      triangulation.remove(vertexToRemove);
+      std::stack<Triangulation::Face_handle> stack;
+      Triangulation::Face_handle emptyFace = triangulation.locate(location);
+      stack.push(emptyFace);
+      tagStack(stack, tag);
+      
+      ++surroundedVerticesRemoved;
+    } else {
+      ++currentVertex;
+    }
+  }
+  std::cout << "\tRemoved " << surroundedVerticesRemoved << " surrounded vertices" << std::endl;
+  std::cout << "\tAfter: " << triangulation.number_of_faces() << " triangles in the triangulation" << std::endl;
+}
+
+
+void PlanarPartition::removeConstraints() {
+	// Remove constrained edges that have the same polygon on both sides
+  unsigned long long int constrainedEdgesRemoved = 0;
+  for (Triangulation::All_edges_iterator currentEdge = triangulation.all_edges_begin(); currentEdge != triangulation.all_edges_end(); ++currentEdge) {
+    if (!triangulation.is_constrained(*currentEdge)) continue;
+    if (currentEdge->first->info().getOneTag() == currentEdge->first->neighbor(currentEdge->second)->info().getOneTag()) {
+      triangulation.remove_constrained_edge(currentEdge->first, currentEdge->second);
+      ++constrainedEdgesRemoved;
+    }
+  }
+  std::cout << "\tRemoved " << constrainedEdgesRemoved << " constrained edges" << std::endl;
+}
+
+std::list<Triangulation::Vertex_handle>*
+PlanarPartition::getBoundary(Triangulation::Face_handle face, int edge, PolygonHandle *polygon) {
+  std::list<Triangulation::Vertex_handle> *vertices = new std::list<Triangulation::Vertex_handle>();
+	// Check clockwise edge
+	if (!face->is_constrained(face->cw(edge)) && !face->neighbor(face->cw(edge))->info().hasNoTags()) {
+		face->neighbor(face->cw(edge))->info().removeAllTags();
+		std::list<Triangulation::Vertex_handle> *v1 = getBoundary(face->neighbor(face->cw(edge)), face->neighbor(face->cw(edge))->index(face), polygon);
+    vertices->splice(vertices->end(), *v1);
+		delete v1;
+	}
+	// Add central vertex
+	vertices->push_back(face->vertex(edge));
+	// Check counterclockwise edge
+	if (!face->is_constrained(face->ccw(edge)) && !face->neighbor(face->ccw(edge))->info().hasNoTags()) {
+		face->neighbor(face->ccw(edge))->info().removeAllTags();
+		std::list<Triangulation::Vertex_handle> *v2 = getBoundary(face->neighbor(face->ccw(edge)), face->neighbor(face->ccw(edge))->index(face), polygon);
+    vertices->splice(vertices->end(), *v2);
+		delete v2;
+	}
+	return vertices;
 }
