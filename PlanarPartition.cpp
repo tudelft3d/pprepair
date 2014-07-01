@@ -47,11 +47,9 @@ bool PlanarPartition::addOGRdataset(std::string &file) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
 		return false;
 	}
-  std::cout << "Adding a new dataset to the PP: " << std::endl << "\t" << file << std::endl;
+  std::cout << "Adding new dataset" << std::endl << "\t" << file << std::endl;
   std::vector<OGRFeature*> lsInputFeatures;
   getOGRFeatures(file, lsInputFeatures);
-//  std::cout << lsInputFeatures.size() << std::endl;
-//  validateSingleGeom(lsInputFeatures);
   addFeatures(lsInputFeatures);
   
   // std::cout << "# of features: " << lsInputFeatures.size() << std::endl;
@@ -278,7 +276,7 @@ bool PlanarPartition::buildPP() {
 		return false;
 	}
   
-  std::cout << "Tagging the triangles..." << std::endl;
+  std::cout << "Building the PP (tagging the triangles)..." << std::endl;
   std::stack<Triangulation::Face_handle> stack;
 	Triangulation::Vertices_in_constraint_iterator previousVertex, currentVertex;
 	Triangulation::Face_handle currentFace;
@@ -349,6 +347,198 @@ void PlanarPartition::tagStack(std::stack<Triangulation::Face_handle> &stack, Po
 		}
 	}
 }
+
+bool PlanarPartition::repairRN(bool alsoUniverse) {
+	bool repaired = true;
+  // Use a temporary vector to make it deterministic and order independent
+	std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
+	std::set<Triangulation::Face_handle> processedFaces;
+	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
+		if (!currentFace->info().hasOneTag() && !processedFaces.count(currentFace)) {
+			// Expand this triangle into a complete region
+			std::set<Triangulation::Face_handle> facesInRegion;
+			facesInRegion.insert(currentFace);
+			std::stack<Triangulation::Face_handle> facesToProcess;
+			facesToProcess.push(currentFace);
+			while (facesToProcess.size() > 0) {
+				Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
+				facesToProcess.pop();
+				processedFaces.insert(currentFaceInStack);
+				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
+            !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
+					facesInRegion.insert(currentFaceInStack->neighbor(0));
+					facesToProcess.push(currentFaceInStack->neighbor(0));
+				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
+					facesInRegion.insert(currentFaceInStack->neighbor(1));
+					facesToProcess.push(currentFaceInStack->neighbor(1));
+				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
+					facesInRegion.insert(currentFaceInStack->neighbor(2));
+					facesToProcess.push(currentFaceInStack->neighbor(2));
+				}
+			}
+			// Find a random tag
+			PolygonHandle *tagToAssign;
+			while (true) {
+				std::set<Triangulation::Face_handle>::iterator randomFace = facesInRegion.begin();
+				std::advance(randomFace, rand() % facesInRegion.size());
+				int neighbourIndex = (rand() % 3);
+				unsigned int numberOfTags = (*randomFace)->neighbor(neighbourIndex)->info().numberOfTags();
+				if (numberOfTags == 0)
+          continue;
+				if (numberOfTags == 1) {
+					tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();
+					if (alsoUniverse || tagToAssign != &universe)
+            break;
+				}
+        else {
+					std::list<PolygonHandle *>::const_iterator randomTag = static_cast<MultiPolygonHandle *>((*randomFace)->neighbor(neighbourIndex)->info().getTags())->getHandles()->begin();
+					std::advance(randomTag, rand()%numberOfTags);
+					tagToAssign = *randomTag;
+					if (alsoUniverse || tagToAssign != &universe)
+            break;
+				}
+			}
+			// Assign the region to the random tag
+			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+				facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
+			}
+		}
+	}
+	// Re-tag faces in the vector
+	for (std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> >::iterator currentFace = facesToRepair.begin(); currentFace != facesToRepair.end(); ++currentFace) {
+		currentFace->first->info().removeAllTags();
+		currentFace->first->info().addTag(currentFace->second);
+	}
+	return repaired;
+}
+
+bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const std::string &priority) {
+	if (state < TAGGED) {
+		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
+		return false;
+	}
+  if (state > TAGGED) {
+		std::cout << "Triangulation already repaired!" << std::endl;
+		return false;
+	}
+	
+  time_t thisTime = time(NULL);
+  bool repaired;
+  if (method == "RN") {
+    std::cout << "Repairing regions by random neighbour...";
+    repaired = repairRN(alsoUniverse);
+  }
+  else if (method == "LB") {
+    std::cout << "Repairing regions by longest boundary...";
+    repaired = repairLB(alsoUniverse);
+  }
+  
+  std::cout << " done" << std::endl;
+	if (repaired) {
+		std::cout << "Repair successful (" << time(NULL)-thisTime << " s). All polygons are now valid." << std::endl;
+	}
+  else {
+		std::cout << "Repair of all polygons not possible (" << time(NULL)-thisTime << " s)." << std::endl;
+	}
+	if (repaired) state = REPAIRED;
+	return repaired;
+}
+
+bool PlanarPartition::repairLB(bool alsoUniverse) {
+	bool repaired = true;
+	// Use a temporary vector to make it deterministic and order independent
+	std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
+	std::set<Triangulation::Face_handle> processedFaces;
+	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
+		std::map<PolygonHandle *, double> tagBoundaryLength;
+		if (!currentFace->info().hasOneTag() && !processedFaces.count(currentFace)) {
+			// Expand this triangle into a complete region
+			std::set<Triangulation::Face_handle> facesInRegion;
+			facesInRegion.insert(currentFace);
+			std::stack<Triangulation::Face_handle> facesToProcess;
+			facesToProcess.push(currentFace);
+			while (facesToProcess.size() > 0) {
+				Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
+				facesToProcess.pop();
+				processedFaces.insert(currentFaceInStack);
+				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
+            !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
+					facesInRegion.insert(currentFaceInStack->neighbor(0));
+					facesToProcess.push(currentFaceInStack->neighbor(0));
+				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
+					facesInRegion.insert(currentFaceInStack->neighbor(1));
+					facesToProcess.push(currentFaceInStack->neighbor(1));
+				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
+					facesInRegion.insert(currentFaceInStack->neighbor(2));
+					facesToProcess.push(currentFaceInStack->neighbor(2));
+				}
+			}
+			// Add up the boundary for each triangle and tag
+			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+				if (!facesInRegion.count((*currentFaceInRegion)->neighbor(0))) {
+					addToLength(tagBoundaryLength, (*currentFaceInRegion)->neighbor(0)->info().getTags(), sqrt(CGAL::to_double(triangulation.segment(*currentFaceInRegion, 0).squared_length())));
+				} if (!facesInRegion.count((*currentFaceInRegion)->neighbor(1))) {
+					addToLength(tagBoundaryLength, (*currentFaceInRegion)->neighbor(1)->info().getTags(), sqrt(CGAL::to_double(triangulation.segment(*currentFaceInRegion, 1).squared_length())));
+				} if (!facesInRegion.count((*currentFaceInRegion)->neighbor(2))) {
+					addToLength(tagBoundaryLength, (*currentFaceInRegion)->neighbor(2)->info().getTags(), sqrt(CGAL::to_double(triangulation.segment(*currentFaceInRegion, 2).squared_length())));
+				}
+			}
+			// Find the tag with longest boundary
+			double maxLength = 0.0;
+			std::map<PolygonHandle *, double>::iterator longest = tagBoundaryLength.end();
+			for (std::map<PolygonHandle *, double>::iterator currentLength = tagBoundaryLength.begin(); currentLength != tagBoundaryLength.end(); ++currentLength) {
+				if (currentLength->first != NULL && (alsoUniverse || currentLength->first != &universe)) {
+					if (currentLength->second > maxLength && (currentFace->info().hasTag(currentLength->first) || currentFace->info().hasNoTags())) {
+						maxLength = currentLength->second;
+						longest = currentLength;
+					} else if (currentLength->second == maxLength) {
+						longest = tagBoundaryLength.end();
+					}
+				}
+			}
+			// Assign the region to the tag with the longest boundary (if there is one)
+			if (longest == tagBoundaryLength.end()) repaired = false;
+			else {
+				for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+					facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, longest->first));
+				}
+			}
+		}
+	}
+	
+	// Re-tag faces in the vector
+	for (std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> >::iterator currentFace = facesToRepair.begin(); currentFace != facesToRepair.end(); ++currentFace) {
+		currentFace->first->info().removeAllTags();
+		currentFace->first->info().addTag(currentFace->second);
+	}
+	return repaired;
+}
+
+
+void PlanarPartition::addToLength(std::map<PolygonHandle *, double> &lengths, PolygonHandle *ph, double length) {
+	if (ph == NULL)
+    return;
+	if (ph->isMultiPolygonHandle()) {
+		MultiPolygonHandle *mph = static_cast<MultiPolygonHandle *>(ph);
+		for (std::list<PolygonHandle *>::const_iterator currentPolygonHandle = mph->getHandles()->begin(); currentPolygonHandle != mph->getHandles()->end(); ++currentPolygonHandle) {
+			if (lengths.count(*currentPolygonHandle))
+        lengths[*currentPolygonHandle] += length;
+			else
+        lengths[*currentPolygonHandle] = length;
+		}
+	}
+  else {
+		if (lengths.count(ph))
+      lengths[ph] += length;
+		else
+      lengths[ph] = length;
+	}
+}
+
 
 bool PlanarPartition::tagTriangulation() {
 	
@@ -538,12 +728,13 @@ bool PlanarPartition::repairRegionsByLongestBoundary(bool alsoUniverse) {
 	return repaired;
 }
 
+
 bool PlanarPartition::repairRegionsByRandomNeighbour(bool alsoUniverse) {
-	
 	if (state < TAGGED) {
 		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
 		return false;
-	} if (state > TAGGED) {
+	}
+  if (state > TAGGED) {
 		std::cout << "Triangulation already repaired!" << std::endl;
 		return false;
 	}
@@ -688,8 +879,9 @@ bool PlanarPartition::exportTriangulation(const char *file, bool withNumberOfTag
 	return true;
 }
 
+// TODO: change so that it prints for regions not triangles?
 void PlanarPartition::printInfo(std::ostream &ostr) {
-  
+  std::cout << "*** Triangulation ***" << std::endl;
   std::cout << "\tVertices: " << triangulation.number_of_vertices() << std::endl;
 	std::cout << "\tEdges: " << triangulation.tds().number_of_edges() << std::endl;
 	std::cout << "\tTriangles: " << triangulation.number_of_faces() << std::endl;
@@ -705,5 +897,5 @@ void PlanarPartition::printInfo(std::ostream &ostr) {
   ostr << "\tHoles:    " << untagged << " triangles (" << 100.0*untagged/total << " %)" << std::endl <<
   "\tOk:       " << onetag << " triangles (" << 100.0*onetag/total << " %)" << std::endl <<
   "\tOverlaps: " << multipletags << " triangles (" << 100.0*multipletags/total << " %)" << std::endl;
-
+  std::cout << "*********************" << std::endl;
 }

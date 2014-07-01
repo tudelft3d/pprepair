@@ -48,8 +48,8 @@ int main (int argc, char* const argv[]) {
     TCLAP::MultiArg<std::string> inputDSs     ("i", "input", "input OGR dataset (this can be used more than once)", true, "string");
     TCLAP::ValueArg<std::string> spatialextent("e", "extent", "spatial extent", false, "", "string");
     TCLAP::ValueArg<std::string> outputFile   ("o", "output", "output repaired file (OGR format)", false, "","string");
-    TCLAP::ValueArg<std::string> outputErrors ("", "outerrors", "errors to a shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> outputTr     ("", "outtriangulation", "output triangulation to a shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outputErrors ("",  "outerrors", "errors to a shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outputTr     ("",  "outtriangulation", "output triangulation to a shapefile", false, "","string");
     TCLAP::ValueArg<std::string> priority     ("p", "priority", "priority list for repairing", false, "", "string");
     TCLAP::ValueArg<std::string> repair       ("r", "repair", "repair method used: RN/LB/PL/EM", false, "", &rmVals);
     TCLAP::SwitchArg             validation   ("v", "validation", "validation only (gaps and overlaps reported)", false);
@@ -69,10 +69,8 @@ int main (int argc, char* const argv[]) {
     for (std::vector<std::string>::iterator it = inputs.begin() ; it != inputs.end(); ++it) {
       pp.addOGRdataset(*it);
     }
-    std::cout << "# polygons: " << pp.noPolygons() << std::endl;
-    pp.printInfo();
+    std::cout << "Total input polygons: " << pp.noPolygons() << std::endl;
     pp.buildPP();
-    // pp.printInfo();
     
     //-- validation only
     if (validation.getValue() == true) {
@@ -84,6 +82,15 @@ int main (int argc, char* const argv[]) {
         std::cout << "Planar partition VALID." << std::endl;
       }
     }
+    
+    pp.printInfo();
+    pp.repair(repair.getValue());
+    
+    //-- if there was a 'tie' then fix with RN
+    if (pp.isValid() == false) {
+      pp.repair("RN");
+    }
+    
     pp.printInfo();
 	}
   catch (TCLAP::ArgException &e) {
