@@ -1004,6 +1004,9 @@ bool PlanarPartition::exportPolygonsSHP() {
        it != outputPolygons.end();
        ++it) {
     allFDefs.insert(it->first->feature->GetDefnRef());
+//    OGRFeature *f = it->first->feature;
+//    std::cout << f->GetFieldDefnRef(0)->GetNameRef() << std::endl;
+//    std::cout << f->GetFieldAsString(0) << std::endl;
   }
 
 //-- 2. create new a SHP for each one
@@ -1017,27 +1020,32 @@ bool PlanarPartition::exportPolygonsSHP() {
       return false;
     }
     std::string tmp = (*it)->GetName();
-    std::string outname = "/Users/hugo/temp/" + tmp + "-out.shp";
+    std::string outname = "/Users/hugo/temp/" + tmp + "-out.shp";  //-- TODO: output to a chosen folder?
     OGRDataSource *dataSource = driver->Open(outname.c_str(), false);
-    allshps[*it] = dataSource;
     if (dataSource != NULL) {
       std::cout << "\tOverwriting file..." << std::endl;
       if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
         std::cout << "\tError: Couldn't erase file with same name." << std::endl;
         return false;
-      } OGRDataSource::DestroyDataSource(dataSource);
+      }
+      OGRDataSource::DestroyDataSource(dataSource);
     }
-    std::cout << "\tWriting file... " << std::endl;
+    std::cout << "\tWriting file " << outname << std::endl;
     dataSource = driver->CreateDataSource(outname.c_str(), NULL);
     if (dataSource == NULL) {
       std::cout << "\tError: Could not create file." << std::endl;
       return false;
     }
+    allshps[*it] = dataSource;
     //	OGRLayer *layer = dataSource->CreateLayer("polygons", spatialReference, wkbPolygon, NULL);
     OGRLayer *layer = dataSource->CreateLayer("polygons", NULL, wkbPolygon, NULL);
     if (layer == NULL) {
       std::cout << "\tError: Could not create layer." << std::endl;
       return false;
+    }
+    //-- create all the fields
+    for (int i = 0; i < (*it)->GetFieldCount(); i++) {
+      layer->CreateField((*it)->GetFieldDefn(i));
     }
   }
 
@@ -1068,8 +1076,6 @@ bool PlanarPartition::exportPolygonsSHP() {
       innerRing.addPoint(CGAL::to_double(currentRing->vertex(0).x()), CGAL::to_double(currentRing->vertex(0).y()));
 			polygon.addRing(&innerRing);
 		}
-    
-//    OGRFeature *feature = OGRFeature::CreateFeature(layer->GetLayerDefn());
 		
 		f->SetGeometry(&polygon);
 		// Create OGR feature
