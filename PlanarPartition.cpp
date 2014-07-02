@@ -417,85 +417,57 @@ bool PlanarPartition::repairPL(const std::string &file, bool alsoUniverse) {
 			// Find the tag with the highest priority
 			PolygonHandle *tagToAssign = NULL;
 			unsigned int priorityOfTag = UINT_MAX;
+      std::map<std::string, unsigned int>::const_iterator itatt;
 			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
-				// Gap, check neighbours
-				if ((*currentFaceInRegion)->info().hasNoTags()) {
-					if (!(*currentFaceInRegion)->neighbor(0)->info().hasNoTags()) {
-						if ((*currentFaceInRegion)->neighbor(0)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(0)->info().getTags() != &universe) {
-              std::string v = (*currentFaceInRegion)->neighbor(0)->info().getTags()->getValueAttributeAsString(att);
-							if (priorityMap[v] < priorityOfTag) {
-								priorityOfTag = priorityMap[v];
-								tagToAssign = (*currentFaceInRegion)->neighbor(0)->info().getTags();
-							}
-						}
-            else {
-							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(0)->info().getTags());
-							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
-								if (*currentTag == &universe)
-                  continue;
-								if (priorityMap[(*currentTag)->getValueAttributeAsString(att)] < priorityOfTag) {
-									priorityOfTag = priorityMap[(*currentTag)->getValueAttributeAsString(att)];
-									tagToAssign = *currentTag;
-								}
-							}
-						}
-					}
-          if (!(*currentFaceInRegion)->neighbor(1)->info().hasNoTags()) {
-						if ((*currentFaceInRegion)->neighbor(1)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(1)->info().getTags() != &universe) {
-              std::string v = (*currentFaceInRegion)->neighbor(1)->info().getTags()->getValueAttributeAsString(att);
-							if (priorityMap[v] < priorityOfTag) {
-								priorityOfTag = priorityMap[v];
-								tagToAssign = (*currentFaceInRegion)->neighbor(1)->info().getTags();
-							}
-						}
-            else {
-							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(1)->info().getTags());
-							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
-								if (*currentTag == &universe) continue;
-								if (priorityMap[(*currentTag)->getValueAttributeAsString(att)] < priorityOfTag) {
-									priorityOfTag = priorityMap[(*currentTag)->getValueAttributeAsString(att)];
-									tagToAssign = *currentTag;
-								}
-							}
-						}
-					}
-          if (!(*currentFaceInRegion)->neighbor(2)->info().hasNoTags()) {
-						if ((*currentFaceInRegion)->neighbor(2)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(2)->info().getTags() != &universe) {
-              std::string v = (*currentFaceInRegion)->neighbor(2)->info().getTags()->getValueAttributeAsString(att);
-							if (priorityMap[v] < priorityOfTag) {
-								priorityOfTag = priorityMap[v];
-								tagToAssign = (*currentFaceInRegion)->neighbor(2)->info().getTags();
-							}
-						}
-            else {
-							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(2)->info().getTags());
-							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
-								if (*currentTag == &universe) continue;
-								if (priorityMap[(*currentTag)->getValueAttributeAsString(att)] < priorityOfTag) {
-									priorityOfTag = priorityMap[(*currentTag)->getValueAttributeAsString(att)];
-									tagToAssign = *currentTag;
-								}
-							}
-						}
-					}
-				}
-				
-				// Overlap, check this one
+      //-- Gaps --
+        if ((*currentFaceInRegion)->info().hasNoTags()) {
+          for (int j = 0; j <= 2; j++) {
+            if (!(*currentFaceInRegion)->neighbor(j)->info().hasNoTags()) {
+              if ((*currentFaceInRegion)->neighbor(j)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(j)->info().getTags() != &universe) {
+                std::string v = (*currentFaceInRegion)->neighbor(j)->info().getTags()->getValueAttributeAsString(att);
+                itatt = priorityMap.find(v);
+                if ( (itatt != priorityMap.end()) && (itatt->second < priorityOfTag) ) {
+                  priorityOfTag = itatt->second;
+                  tagToAssign = (*currentFaceInRegion)->neighbor(j)->info().getTags();
+                }
+              }
+              else {
+                MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(j)->info().getTags());
+                for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
+                  if (*currentTag == &universe)
+                    continue;
+                  std::string v = (*currentTag)->getValueAttributeAsString(att);
+                  itatt = priorityMap.find(v);
+                  if ( (itatt != priorityMap.end()) && (itatt->second < priorityOfTag) ) {
+                    priorityOfTag = itatt->second;
+                    tagToAssign = *currentTag;
+                  }
+                }
+              }
+            }
+          }
+        }
+			//-- Overlap
 				else {
 					if ((*currentFaceInRegion)->info().hasOneTag() && (*currentFaceInRegion)->info().getTags() != &universe) {
             std::string v = (*currentFaceInRegion)->info().getTags()->getValueAttributeAsString(att);
-            if (priorityMap[v] < priorityOfTag) {
-              priorityOfTag = priorityMap[v];
+            itatt = priorityMap.find(v);
+            if ( (itatt != priorityMap.end()) && (itatt->second < priorityOfTag) ) {
+              priorityOfTag = itatt->second;
               tagToAssign = (*currentFaceInRegion)->info().getTags();
             }
-					} else {
+					}
+          else {
 						MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->info().getTags());
 						for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
-							if (*currentTag == &universe) continue;
-							if (priorityMap[(*currentTag)->getValueAttributeAsString(att)] < priorityOfTag) {
-								priorityOfTag = priorityMap[(*currentTag)->getValueAttributeAsString(att)];
-								tagToAssign = *currentTag;
-							}
+							if (*currentTag == &universe)
+                continue;
+              std::string v = (*currentTag)->getValueAttributeAsString(att);
+              itatt = priorityMap.find(v);
+              if ( (itatt != priorityMap.end()) && (itatt->second < priorityOfTag) ) {
+                priorityOfTag = itatt->second;
+                tagToAssign = *currentTag;
+              }
 						}
 					}
 				}
