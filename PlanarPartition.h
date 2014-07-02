@@ -38,7 +38,7 @@ public:
   bool repair(const std::string &method, bool alsoUniverse = true, const std::string &priority = std::string());
 
   bool reconstructPolygons(bool removeVertices = false);
-  bool exportPolygonsSHP();
+  bool exportPolygonsSHP(std::string &folder);
   bool exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);
   
   void printInfo(std::ostream &ostr = std::cout);
@@ -72,8 +72,11 @@ private:
   PolygonHandle universe;
   Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
 
-  bool repairRN(bool alsoUniverse = true); //- Random Neighbour
-  bool repairLB(bool alsoUniverse = true); //- Longest Boundary
+  std::vector<OGRFeatureDefn*> allFeatureDefns; //-- all the FeatureDefn of all the input datasets
+
+  bool repairRN(bool alsoUniverse = true);                          //-- Random Neighbour
+  bool repairLB(bool alsoUniverse = true);                          //-- Longest Boundary
+  bool repairPL(const std::string &file, bool alsoUniverse = true); //-- Priority List
   
   bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures);

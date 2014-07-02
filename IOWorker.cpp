@@ -788,23 +788,27 @@ bool IOWorker::repairByPriorityList(Triangulation &triangulation, const char *fi
 								priorityOfTag = priorityMap[(*currentFaceInRegion)->neighbor(0)->info().getTags()->getSchemaField()];
 								tagToAssign = (*currentFaceInRegion)->neighbor(0)->info().getTags();
 							}
-						} else {
+						}
+            else {
 							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(0)->info().getTags());
 							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
-								if (*currentTag == &universe) continue;
+								if (*currentTag == &universe)
+                  continue;
 								if (priorityMap[(*currentTag)->getSchemaField()] < priorityOfTag) {
 									priorityOfTag = priorityMap[(*currentTag)->getSchemaField()];
 									tagToAssign = *currentTag;
 								}
 							}
 						}
-					} if (!(*currentFaceInRegion)->neighbor(1)->info().hasNoTags()) {
+					}
+          if (!(*currentFaceInRegion)->neighbor(1)->info().hasNoTags()) {
 						if ((*currentFaceInRegion)->neighbor(1)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(1)->info().getTags() != &universe) {
 							if (priorityMap[(*currentFaceInRegion)->neighbor(1)->info().getTags()->getSchemaField()] < priorityOfTag) {
 								priorityOfTag = priorityMap[(*currentFaceInRegion)->neighbor(1)->info().getTags()->getSchemaField()];
 								tagToAssign = (*currentFaceInRegion)->neighbor(1)->info().getTags();
 							}
-						} else {
+						}
+            else {
 							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(1)->info().getTags());
 							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
 								if (*currentTag == &universe) continue;
@@ -814,13 +818,15 @@ bool IOWorker::repairByPriorityList(Triangulation &triangulation, const char *fi
 								}
 							}
 						}
-					} if (!(*currentFaceInRegion)->neighbor(2)->info().hasNoTags()) {
+					}
+          if (!(*currentFaceInRegion)->neighbor(2)->info().hasNoTags()) {
 						if ((*currentFaceInRegion)->neighbor(2)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(2)->info().getTags() != &universe) {
 							if (priorityMap[(*currentFaceInRegion)->neighbor(2)->info().getTags()->getSchemaField()] < priorityOfTag) {
 								priorityOfTag = priorityMap[(*currentFaceInRegion)->neighbor(2)->info().getTags()->getSchemaField()];
 								tagToAssign = (*currentFaceInRegion)->neighbor(2)->info().getTags();
 							}
-						} else {
+						}
+            else {
 							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(2)->info().getTags());
 							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
 								if (*currentTag == &universe) continue;

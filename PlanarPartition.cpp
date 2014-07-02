@@ -50,6 +50,10 @@ bool PlanarPartition::addOGRdataset(std::string &file) {
   std::cout << "Adding new dataset" << std::endl << "\t" << file << std::endl;
   std::vector<OGRFeature*> lsInputFeatures;
   getOGRFeatures(file, lsInputFeatures);
+  //-- keep track of all the OGRFeatureDefn that come in, for PL/EM repair
+  if (lsInputFeatures.size() > 0) {
+    allFeatureDefns.push_back(lsInputFeatures[0]->GetDefnRef());
+  }
   addFeatures(lsInputFeatures);
   
   // std::cout << "# of features: " << lsInputFeatures.size() << std::endl;
@@ -348,6 +352,173 @@ void PlanarPartition::tagStack(std::stack<Triangulation::Face_handle> &stack, Po
 	}
 }
 
+
+bool PlanarPartition::repairPL(const std::string &file, bool alsoUniverse) {
+  
+//-- 1. Fetch the priority list in the file
+  std::ifstream priofile(file.c_str(), std::ifstream::in);
+  if (!priofile)
+  {
+    std::cout << "Priority file could not be opened." << std::endl;
+		return false;
+  }
+  //-- each polygon must have the attribute used for repair
+  std::string att;
+  std::getline(priofile, att);
+  for (std::vector<OGRFeatureDefn*>::const_iterator it = allFeatureDefns.begin();
+       it != allFeatureDefns.end();
+       it++) {
+    if ( (*it)->GetFieldIndex(att.c_str()) == -1) {
+      std::cout << "File " << (*it)->GetName() << " doesn't have the attribute " << att << std::endl;
+      return false;
+    }
+  }
+  std::map<std::string, unsigned int> priorityMap;
+  unsigned int c = 0;
+	while (!priofile.eof()) {
+    std::string value;
+    std::getline(priofile, value);
+    if (value != "") {
+      priorityMap[value] = c;
+      c++;
+    }
+  }
+  priofile.close();
+
+  // Use a temporary vector to make it deterministic and order independent
+	std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
+	std::set<Triangulation::Face_handle> processedFaces;
+	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
+		if (!currentFace->info().hasOneTag() && !processedFaces.count(currentFace)) {
+			// Expand this triangle into a complete region
+			std::set<Triangulation::Face_handle> facesInRegion;
+			facesInRegion.insert(currentFace);
+			std::stack<Triangulation::Face_handle> facesToProcess;
+			facesToProcess.push(currentFace);
+			while (facesToProcess.size() > 0) {
+				Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
+				facesToProcess.pop();
+				processedFaces.insert(currentFaceInStack);
+				if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
+            !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
+					facesInRegion.insert(currentFaceInStack->neighbor(0));
+					facesToProcess.push(currentFaceInStack->neighbor(0));
+				} if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
+					facesInRegion.insert(currentFaceInStack->neighbor(1));
+					facesToProcess.push(currentFaceInStack->neighbor(1));
+				} if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
+					facesInRegion.insert(currentFaceInStack->neighbor(2));
+					facesToProcess.push(currentFaceInStack->neighbor(2));
+				}
+			}
+			
+			// Find the tag with the highest priority
+			PolygonHandle *tagToAssign = NULL;
+			unsigned int priorityOfTag = UINT_MAX;
+			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+				// Gap, check neighbours
+				if ((*currentFaceInRegion)->info().hasNoTags()) {
+					if (!(*currentFaceInRegion)->neighbor(0)->info().hasNoTags()) {
+						if ((*currentFaceInRegion)->neighbor(0)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(0)->info().getTags() != &universe) {
+              std::string v = (*currentFaceInRegion)->neighbor(0)->info().getTags()->getValueAttributeAsString(att);
+							if (priorityMap[v] < priorityOfTag) {
+								priorityOfTag = priorityMap[v];
+								tagToAssign = (*currentFaceInRegion)->neighbor(0)->info().getTags();
+							}
+						}
+            else {
+							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(0)->info().getTags());
+							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
+								if (*currentTag == &universe)
+                  continue;
+								if (priorityMap[(*currentTag)->getValueAttributeAsString(att)] < priorityOfTag) {
+									priorityOfTag = priorityMap[(*currentTag)->getValueAttributeAsString(att)];
+									tagToAssign = *currentTag;
+								}
+							}
+						}
+					}
+          if (!(*currentFaceInRegion)->neighbor(1)->info().hasNoTags()) {
+						if ((*currentFaceInRegion)->neighbor(1)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(1)->info().getTags() != &universe) {
+              std::string v = (*currentFaceInRegion)->neighbor(1)->info().getTags()->getValueAttributeAsString(att);
+							if (priorityMap[v] < priorityOfTag) {
+								priorityOfTag = priorityMap[v];
+								tagToAssign = (*currentFaceInRegion)->neighbor(1)->info().getTags();
+							}
+						}
+            else {
+							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(1)->info().getTags());
+							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
+								if (*currentTag == &universe) continue;
+								if (priorityMap[(*currentTag)->getValueAttributeAsString(att)] < priorityOfTag) {
+									priorityOfTag = priorityMap[(*currentTag)->getValueAttributeAsString(att)];
+									tagToAssign = *currentTag;
+								}
+							}
+						}
+					}
+          if (!(*currentFaceInRegion)->neighbor(2)->info().hasNoTags()) {
+						if ((*currentFaceInRegion)->neighbor(2)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(2)->info().getTags() != &universe) {
+              std::string v = (*currentFaceInRegion)->neighbor(2)->info().getTags()->getValueAttributeAsString(att);
+							if (priorityMap[v] < priorityOfTag) {
+								priorityOfTag = priorityMap[v];
+								tagToAssign = (*currentFaceInRegion)->neighbor(2)->info().getTags();
+							}
+						}
+            else {
+							MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(2)->info().getTags());
+							for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
+								if (*currentTag == &universe) continue;
+								if (priorityMap[(*currentTag)->getValueAttributeAsString(att)] < priorityOfTag) {
+									priorityOfTag = priorityMap[(*currentTag)->getValueAttributeAsString(att)];
+									tagToAssign = *currentTag;
+								}
+							}
+						}
+					}
+				}
+				
+				// Overlap, check this one
+				else {
+					if ((*currentFaceInRegion)->info().hasOneTag() && (*currentFaceInRegion)->info().getTags() != &universe) {
+            std::string v = (*currentFaceInRegion)->info().getTags()->getValueAttributeAsString(att);
+            if (priorityMap[v] < priorityOfTag) {
+              priorityOfTag = priorityMap[v];
+              tagToAssign = (*currentFaceInRegion)->info().getTags();
+            }
+					} else {
+						MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->info().getTags());
+						for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
+							if (*currentTag == &universe) continue;
+							if (priorityMap[(*currentTag)->getValueAttributeAsString(att)] < priorityOfTag) {
+								priorityOfTag = priorityMap[(*currentTag)->getValueAttributeAsString(att)];
+								tagToAssign = *currentTag;
+							}
+						}
+					}
+				}
+			}
+			
+			// Assign the tag to the triangles in the region
+			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+				facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
+			}
+		}
+	}
+	
+	// Re-tag faces in the vector
+	for (std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> >::iterator currentFace = facesToRepair.begin();
+       currentFace != facesToRepair.end();
+       ++currentFace) {
+		currentFace->first->info().removeAllTags();
+		currentFace->first->info().addTag(currentFace->second);
+	}
+  return true;
+}
+
+
 bool PlanarPartition::repairRN(bool alsoUniverse) {
 	bool repaired = true;
   // Use a temporary vector to make it deterministic and order independent
@@ -427,12 +598,16 @@ bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const
   time_t thisTime = time(NULL);
   bool repaired;
   if (method == "RN") {
-    std::cout << "Repairing regions by random neighbour...";
+    std::cout << "Repairing regions by random neighbour..." << std::endl;
     repaired = repairRN(alsoUniverse);
   }
   else if (method == "LB") {
-    std::cout << "Repairing regions by longest boundary...";
+    std::cout << "Repairing regions by longest boundary..." << std::endl;
     repaired = repairLB(alsoUniverse);
+  }
+  else if (method == "PL") {
+    std::cout << "Repairing regions by priority list..." << std::endl;
+    repaired = repairPL(priority, alsoUniverse);
   }
   
   std::cout << " done" << std::endl;
@@ -989,7 +1164,7 @@ bool PlanarPartition::reconstructPolygons(bool removeVertices) {
 }
 
 
-bool PlanarPartition::exportPolygonsSHP() {
+bool PlanarPartition::exportPolygonsSHP(std::string &folder) {
 	if (state < RECONSTRUCTED) {
 		std::cout << "Polygons have not been reconstructed yet. Nothing to export!" << std::endl;
 		return false;
@@ -1004,9 +1179,6 @@ bool PlanarPartition::exportPolygonsSHP() {
        it != outputPolygons.end();
        ++it) {
     allFDefs.insert(it->first->feature->GetDefnRef());
-//    OGRFeature *f = it->first->feature;
-//    std::cout << f->GetFieldDefnRef(0)->GetNameRef() << std::endl;
-//    std::cout << f->GetFieldAsString(0) << std::endl;
   }
 
 //-- 2. create new a SHP for each one
@@ -1020,7 +1192,8 @@ bool PlanarPartition::exportPolygonsSHP() {
       return false;
     }
     std::string tmp = (*it)->GetName();
-    std::string outname = "/Users/hugo/temp/" + tmp + "-out.shp";  //-- TODO: output to a chosen folder?
+//    std::string outname = "/Users/hugo/temp/" + tmp + "-out.shp";  //-- TODO: output to a chosen folder?
+    std::string outname = folder + "/" + tmp + ".r.shp";
     OGRDataSource *dataSource = driver->Open(outname.c_str(), false);
     if (dataSource != NULL) {
       std::cout << "\tOverwriting file..." << std::endl;
@@ -1081,14 +1254,12 @@ bool PlanarPartition::exportPolygonsSHP() {
 		// Create OGR feature
 		if (layer->CreateFeature(f) != OGRERR_NONE)
       std::cout << "\tError: Could not create feature." << std::endl;
-		OGRFeature::DestroyFeature(f); //-- TODO: free the features? hmmmm...
+//		OGRFeature::DestroyFeature(f); //-- TODO: free the features? hmmmm...
 	}
-  
   //-- clear memory for all the created SHP
   for (allshpsit = allshps.begin(); allshpsit != allshps.end(); ++allshpsit) {
     OGRDataSource::DestroyDataSource(allshpsit->second);
   }
-  
 	std::cout << "Polygons exported (" << time(NULL)-thisTime << " s)." << std::endl;
   return true;
 }

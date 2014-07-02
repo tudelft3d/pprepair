@@ -180,6 +180,14 @@ PolygonHandle::~PolygonHandle() {
 //	}
 }
 
+std::string PolygonHandle::getValueAttributeAsString(std::string attr) {
+  int i = feature->GetFieldIndex(attr.c_str());
+  if (i == -1)
+    return "";
+  else
+    return feature->GetFieldAsString(i);
+}
+
 void PolygonHandle::addField(Field *field) {
 	fields.push_back(field);
 }

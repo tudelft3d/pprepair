@@ -99,6 +99,9 @@ public:
 	virtual ~PolygonHandle();
   
   OGRFeature* feature;
+  std::string getValueAttributeAsString(std::string attr);
+  
+  
   // References
 	char * getOriginalFile();
 	unsigned int getLayer();

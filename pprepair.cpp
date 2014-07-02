@@ -47,14 +47,13 @@ int main (int argc, char* const argv[]) {
   try {
     TCLAP::MultiArg<std::string> inputDSs     ("i", "input", "input OGR dataset (this can be used more than once)", true, "string");
     TCLAP::ValueArg<std::string> spatialextent("e", "extent", "spatial extent", false, "", "string");
-//    TCLAP::ValueArg<std::string> outputFile   ("o", "output", "output repaired file (SHP only)", false, "","string");
-    TCLAP::ValueArg<std::string> outputErrors ("",  "outerrors", "errors to a shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> outputTr     ("",  "outtriangulation", "output triangulation to a shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> priority     ("p", "priority", "priority list for repairing", false, "", "string");
+    TCLAP::ValueArg<std::string> outputFiles  ("o", "output", "folder for repaired file(s) (SHP only)", false, "","string");
     TCLAP::ValueArg<std::string> repair       ("r", "repair", "repair method used: RN/LB/PL/EM", false, "", &rmVals);
     TCLAP::SwitchArg             validation   ("v", "validation", "validation only (gaps and overlaps reported)", false);
-    TCLAP::SwitchArg             outputFiles  ("o", "output", "output repaired file (SHP only)", false);
-    
+    TCLAP::ValueArg<std::string> outputErrors ("",  "outerrors", "errors to a shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outputTr     ("",  "outtriangulation", "output triangulation to a shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> priority     ("",  "priority", "priority list for repairing", false, "", "string");
+
     cmd.add(inputDSs);
     cmd.add(spatialextent);
     cmd.add(outputFiles);
@@ -76,29 +75,35 @@ int main (int argc, char* const argv[]) {
     //-- validation only
     if (validation.getValue() == true) {
       if (pp.isValid() == false) {
-        std::cout << "Planar partition NOT valid." << std::endl;
+        std::cout << "\nValidation:\n\t planar partition is NOT valid." << std::endl;
         pp.printInfo();
       }
       else {
-        std::cout << "Planar partition VALID." << std::endl;
+        std::cout << "\nValidation:\n\t planar partition is valid." << std::endl;
       }
     }
-    
-    pp.printInfo();
-    pp.repair(repair.getValue());
-    
-    //-- if there was a 'tie' then fix with RN
-    if (pp.isValid() == false) {
-      pp.repair("RN");
+    else {
+      pp.printInfo();
+      if (repair.getValue() == "PL") {
+        pp.repair("PL", true, priority.getValue());
+      }
+      else {
+        pp.repair(repair.getValue());
+      }
+      //-- if there was a 'tie' then fix with RN
+      if (pp.isValid() == false) {
+        std::cout << "Reparing 'ties'..." << std::endl;
+        pp.repair("RN");
+      }
+      pp.printInfo();
+      //-- output repaired SHP files
+      if (outputFiles.getValue() != "") {
+        pp.reconstructPolygons();
+        if (pp.exportPolygonsSHP(outputFiles.getValue()) == false) {
+          return(0);
+        }
+      }
     }
-    
-//    pp.printInfo();
-    
-    if (outputFiles.getValue() == true) {
-      pp.reconstructPolygons();
-      pp.exportPolygonsSHP();
-    }
-    
 	}
   catch (TCLAP::ArgException &e) {
     std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
