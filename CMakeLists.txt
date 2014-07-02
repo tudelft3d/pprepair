@@ -66,7 +66,7 @@ include_directories( ${GDAL_INCLUDE_DIR} )
 # Creating entries for target: pprepair
 # ############################
 
-add_executable( pprepair  FaceInfo.cpp IOWorker.cpp PlanarPartition.cpp PolygonHandle.cpp pprepair.cpp )
+add_executable( pprepair  FaceInfo.cpp PlanarPartition.cpp PolygonHandle.cpp pprepair.cpp )
 
 add_to_cached_list( CGAL_EXECUTABLE_TARGETS pprepair )
 
