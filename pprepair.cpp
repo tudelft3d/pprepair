@@ -45,21 +45,24 @@ int main (int argc, char* const argv[]) {
 
   TCLAP::CmdLine cmd("Allowed options", ' ', "");
   try {
-    TCLAP::MultiArg<std::string> inputDSs     ("i", "input", "input OGR dataset (this can be used more than once)", true, "string");
-    TCLAP::ValueArg<std::string> spatialextent("e", "extent", "spatial extent", false, "", "string");
-    TCLAP::ValueArg<std::string> outputFiles  ("o", "output", "folder for repaired file(s) (SHP only)", false, "","string");
-    TCLAP::ValueArg<std::string> repair       ("r", "repair", "repair method used: RN/LB/PL/EM", false, "", &rmVals);
-    TCLAP::SwitchArg             validation   ("v", "validation", "validation only (gaps and overlaps reported)", false);
-    TCLAP::ValueArg<std::string> outputErrors ("",  "outerrors", "errors to a shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> outputTr     ("",  "outtriangulation", "output triangulation to a shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> priority     ("",  "priority", "priority list for repairing", false, "", "string");
+    TCLAP::MultiArg<std::string> inputDSs       ("i", "input", "input OGR dataset (this can be used more than once)", true, "string");
+    TCLAP::ValueArg<std::string> spatialextent  ("e", "extent", "spatial extent", false, "", "string");
+    TCLAP::ValueArg<std::string> outfiles       ("o", "output", "folder for repaired file(s) (SHP only)", false, "","string");
+    TCLAP::ValueArg<std::string> repair         ("r", "repair", "repair method used: RN/LB/PL/EM", false, "", &rmVals);
+    TCLAP::SwitchArg             validation     ("v", "validation", "validation only (gaps and overlaps reported)", false);
+    TCLAP::ValueArg<std::string> priority       ("",  "priority", "priority list for repairing", false, "", "string");
+    TCLAP::ValueArg<std::string> outerrors      ("",  "outerrors", "errors to a shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outtr          ("",  "outtr", "output triangulation to a shapefile", false, "","string");
+
 
     cmd.add(inputDSs);
     cmd.add(spatialextent);
-    cmd.add(outputFiles);
-    cmd.add(outputErrors);
-    cmd.add(outputTr);
+    cmd.add(outfiles);
+    cmd.add(outerrors);
+    cmd.add(outtr);
     cmd.add(priority);
+//    cmd.add(repair);
+//    cmd.add(validation);
     cmd.xorAdd(repair, validation);
     
     cmd.parse( argc, argv );
@@ -96,13 +99,18 @@ int main (int argc, char* const argv[]) {
         pp.repair("RN");
       }
       pp.printInfo();
+      
       //-- output repaired SHP files
-      if (outputFiles.getValue() != "") {
+      if (outfiles.getValue() != "") {
         pp.reconstructPolygons();
-        if (pp.exportPolygonsSHP(outputFiles.getValue()) == false) {
+        if (pp.exportPolygonsSHP(outfiles.getValue()) == false) {
           return(0);
         }
       }
+    }
+    //-- output triangulation in SHP
+    if (outtr.getValue() != "") {
+      pp.exportTriangulation(outtr.getValue());
     }
 	}
   catch (TCLAP::ArgException &e) {

@@ -22,7 +22,8 @@
 #ifndef PLANARPARTITION_H
 #define PLANARPARTITION_H
 
-#include "IOWorker.h"
+#include "FaceInfo.h"
+#include "definitions/CGALDefinitions.h"
 
 class PlanarPartition {
 public:
@@ -32,37 +33,22 @@ public:
   
   bool addOGRdataset(std::string &file);
   bool buildPP(); //-- this is effectively tagTriangulation()
-
   bool isValid(); //-- are there gaps and/or overlaps?
   
   bool repair(const std::string &method, bool alsoUniverse = true, const std::string &priority = std::string());
 
   bool reconstructPolygons(bool removeVertices = false);
   bool exportPolygonsSHP(std::string &folder);
-  bool exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance);
+  bool exportTriangulation(std::string &outfile);
   
   void printInfo(std::ostream &ostr = std::cout);
   int  noPolygons();
 
-//-- old stuff
-  bool addToTriangulation(const char *file, unsigned int schemaIndex = 0);
-  
-  bool tagTriangulation();
   bool makeAllHolesValid();
-  bool addAllowedHole(Point p);
-  bool addAllowedHoles(const char *file);
+//  bool addAllowedHole(Point p); // TODO: where is that code? ever existed?
+//  bool addAllowedHoles(const char *file);
   bool splitRegions(double ratio);
-  
-  bool checkValidity();
-  bool repairTrianglesByNumberOfNeighbours(bool alsoUniverse);
-	bool repairTrianglesByAbsoluteMajority(bool alsoUniverse);
-	bool repairTrianglesByLongestBoundary(bool alsoUniverse);
-	bool repairRegionsByLongestBoundary(bool alsoUniverse);
-	bool repairRegionsByRandomNeighbour(bool alsoUniverse);
-	bool repairByPriorityList(const char *file);
-  bool repairEdgeMatching(const char *file);
-  
-  bool matchSchemata();
+
   
 private:
   Triangulation triangulation;
@@ -77,6 +63,7 @@ private:
   bool repairRN(bool alsoUniverse = true);                          //-- Random Neighbour
   bool repairLB(bool alsoUniverse = true);                          //-- Longest Boundary
   bool repairPL(const std::string &file, bool alsoUniverse = true); //-- Priority List
+  bool repairEM(const std::string &file, bool alsoUniverse = true); //-- Edge-Matching
   
   bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures);
@@ -86,12 +73,6 @@ private:
   void removeVertices();
   void removeConstraints();
   std::list<Triangulation::Vertex_handle>* getBoundary(Triangulation::Face_handle face, int edge, PolygonHandle *polygon);
-  
-  
-  // I/O handler
-  IOWorker io;
-  
-  // Generated stuff
   
   enum State {
     CREATED,

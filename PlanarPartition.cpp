@@ -247,30 +247,6 @@ bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> 
 }
 
 
-
-bool PlanarPartition::addToTriangulation(const char *file, unsigned int schemaIndex) {
-  // Check if we have already made changes to the triangulation
-  if (state > TRIANGULATED) {
-    std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
-		return false;
-	}
-  
-  std::cout << "Adding a new set of polygons to the triangulation..." << std::endl;
-	time_t thisTime = time(NULL);
-  
-  bool returnValue = io.addToTriangulation(triangulation, edgesToTag, file, schemaIndex);
-  if (triangulation.number_of_faces() > 0) state = TRIANGULATED;
-  
-  // Triangulation stats
-	std::cout << "Polygons added (" << time(NULL)-thisTime << " s). The triangulation has now:" << std::endl;
-	std::cout << "\tVertices: " << triangulation.number_of_vertices() << std::endl;
-	std::cout << "\tEdges: " << triangulation.tds().number_of_edges() << std::endl;
-	std::cout << "\tTriangles: " << triangulation.number_of_faces() << std::endl;
-  
-  return returnValue;
-}
-
-
 bool PlanarPartition::buildPP() {
   if (state < TRIANGULATED) {
 		std::cout << "No triangulation to tag!" << std::endl;
@@ -362,7 +338,7 @@ bool PlanarPartition::repairPL(const std::string &file, bool alsoUniverse) {
     std::cout << "Priority file could not be opened." << std::endl;
 		return false;
   }
-  //-- each polygon must have the attribute used for repair
+  //-- each polygon must have the attribute used for repair, otherwise abort repair
   std::string att;
   std::getline(priofile, att);
   for (std::vector<OGRFeatureDefn*>::const_iterator it = allFeatureDefns.begin();
@@ -490,6 +466,144 @@ bool PlanarPartition::repairPL(const std::string &file, bool alsoUniverse) {
   return true;
 }
 
+
+bool PlanarPartition::repairEM(const std::string &file, bool alsoUniverse) {
+  
+  //-- 1. Fetch the priority list in the file
+  std::ifstream priofile(file.c_str(), std::ifstream::in);
+  if (!priofile)
+  {
+    std::cout << "Priority file could not be opened." << std::endl;
+    return false;
+  }
+  //-- each polygon must have the attribute used for repair, otherwise abort repair
+  std::string att;
+  std::getline(priofile, att);
+  for (std::vector<OGRFeatureDefn*>::const_iterator it = allFeatureDefns.begin();
+       it != allFeatureDefns.end();
+       it++) {
+    if ( (*it)->GetFieldIndex(att.c_str()) == -1) {
+      std::cout << "File " << (*it)->GetName() << " doesn't have the attribute " << att << std::endl;
+      return false;
+    }
+  }
+  std::map<std::string, unsigned int> priorityMap;
+  unsigned int c = 0;
+  while (!priofile.eof()) {
+    std::string value;
+    std::getline(priofile, value);
+    if (value != "") {
+      priorityMap[value] = c;
+      c++;
+    }
+  }
+  priofile.close();
+  
+  // Use a temporary vector to make it deterministic and order independent
+  std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
+  std::set<Triangulation::Face_handle> processedFaces;
+  for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
+    if (!currentFace->info().hasOneTag() && !processedFaces.count(currentFace)) {
+      // Expand this triangle into a complete region
+      std::set<Triangulation::Face_handle> facesInRegion;
+      facesInRegion.insert(currentFace);
+      std::stack<Triangulation::Face_handle> facesToProcess;
+      facesToProcess.push(currentFace);
+      while (facesToProcess.size() > 0) {
+        Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
+        facesToProcess.pop();
+        processedFaces.insert(currentFaceInStack);
+        if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
+            !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
+          facesInRegion.insert(currentFaceInStack->neighbor(0));
+          facesToProcess.push(currentFaceInStack->neighbor(0));
+        } if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
+          facesInRegion.insert(currentFaceInStack->neighbor(1));
+          facesToProcess.push(currentFaceInStack->neighbor(1));
+        } if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
+          facesInRegion.insert(currentFaceInStack->neighbor(2));
+          facesToProcess.push(currentFaceInStack->neighbor(2));
+        }
+      }
+      
+      // Find the tag with the highest priority
+      PolygonHandle *tagToAssign = NULL;
+      unsigned int priorityOfTagg = 0;
+      unsigned int priorityOfTago = UINT_MAX;
+      std::map<std::string, unsigned int>::const_iterator itatt;
+      for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+        //-- Gaps --
+        if ((*currentFaceInRegion)->info().hasNoTags()) {
+          for (int j = 0; j <= 2; j++) {
+            if (!(*currentFaceInRegion)->neighbor(j)->info().hasNoTags()) {
+              if ((*currentFaceInRegion)->neighbor(j)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(j)->info().getTags() != &universe) {
+                std::string v = (*currentFaceInRegion)->neighbor(j)->info().getTags()->getValueAttributeAsString(att);
+                itatt = priorityMap.find(v);
+                if ( (itatt != priorityMap.end()) && (itatt->second >= priorityOfTagg) ) {
+                  priorityOfTagg = itatt->second;
+                  tagToAssign = (*currentFaceInRegion)->neighbor(j)->info().getTags();
+                }
+              }
+              else {
+                MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(j)->info().getTags());
+                for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
+                  if (*currentTag == &universe)
+                    continue;
+                  std::string v = (*currentTag)->getValueAttributeAsString(att);
+                  itatt = priorityMap.find(v);
+                  if ( (itatt != priorityMap.end()) && (itatt->second >= priorityOfTagg) ) {
+                    priorityOfTagg = itatt->second;
+                    tagToAssign = *currentTag;
+                  }
+                }
+              }
+            }
+          }
+        }
+        //-- Overlap
+        else {
+          if ((*currentFaceInRegion)->info().hasOneTag() && (*currentFaceInRegion)->info().getTags() != &universe) {
+            std::string v = (*currentFaceInRegion)->info().getTags()->getValueAttributeAsString(att);
+            itatt = priorityMap.find(v);
+            if ( (itatt != priorityMap.end()) && (itatt->second < priorityOfTago) ) {
+              priorityOfTago = itatt->second;
+              tagToAssign = (*currentFaceInRegion)->info().getTags();
+            }
+          }
+          else {
+            MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->info().getTags());
+            for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
+              if (*currentTag == &universe)
+                continue;
+              std::string v = (*currentTag)->getValueAttributeAsString(att);
+              itatt = priorityMap.find(v);
+              if ( (itatt != priorityMap.end()) && (itatt->second < priorityOfTago) ) {
+                priorityOfTago = itatt->second;
+                tagToAssign = *currentTag;
+              }
+            }
+          }
+        }
+      }
+      
+      // Assign the tag to the triangles in the region
+      for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+        facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
+      }
+    }
+  }
+  
+  // Re-tag faces in the vector
+  for (std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> >::iterator currentFace = facesToRepair.begin();
+       currentFace != facesToRepair.end();
+       ++currentFace) {
+    currentFace->first->info().removeAllTags();
+    currentFace->first->info().addTag(currentFace->second);
+  }
+  return true;
+}
 
 bool PlanarPartition::repairRN(bool alsoUniverse) {
 	bool repaired = true;
@@ -687,31 +801,13 @@ void PlanarPartition::addToLength(std::map<PolygonHandle *, double> &lengths, Po
 }
 
 
-bool PlanarPartition::tagTriangulation() {
-	
-	if (state < TRIANGULATED) {
-		std::cout << "No triangulation to tag!" << std::endl;
-		return false;
-	} if (state > TRIANGULATED) {
-		std::cout << "Triangulation already tagged!" << std::endl;
-		return false;
-	}
-	
-	std::cout << "Tagging..." << std::endl;
-	time_t thisTime = time(NULL);
-  
-  bool returnValue = io.tagTriangulation(triangulation, edgesToTag);
-	
-	// Mark as tagged (for export)
-	if (returnValue) state = TAGGED;
-	
-	std::cout << "Tagging done (" << time(NULL)-thisTime << " s)." << std::endl;
-	
-	return true;
-}
-
 bool PlanarPartition::makeAllHolesValid() {
-  return io.makeAllHolesValid(triangulation);
+  for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
+    if (currentFace->info().hasNoTags()) {
+      currentFace->info().addTag(&universe);
+    }
+  }
+  return true;
 }
 
 bool PlanarPartition::isValid() {
@@ -732,25 +828,7 @@ bool PlanarPartition::isValid() {
 }
 
 
-bool PlanarPartition::checkValidity() {
-	if (state < TAGGED) {
-		std::cout << "Triangulation not yet tagged. Cannot check!" << std::endl;
-		return false;
-	} 
-  if (state >= REPAIRED) 
-    return true;
-
-	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
-		if (!(*currentFace).info().hasOneTag()) {
-      return true;	// true means successful operation, not that everything is valid
-    }
-	}
-	state = REPAIRED;
-	return true;
-}
-
 bool PlanarPartition::splitRegions(double ratio) {
-	
 	if (state < TAGGED) {
 		std::cout << "Triangulation not yet tagged. Cannot split!" << std::endl;
 		return false;
@@ -758,219 +836,43 @@ bool PlanarPartition::splitRegions(double ratio) {
 		std::cout << "Triangulation already repaired!" << std::endl;
 		return false;
 	}
-	
 	std::cout << "Splitting regions..." << std::endl;
 	time_t thisTime = time(NULL);
 	
-	if (ratio <= 1.0) return false;
+	if (ratio <= 1.0)
+    return false;
 	
-	bool returnValue = io.splitRegions(triangulation, ratio);
-	
+	double shortSide, longSide, thisSide;
+	unsigned int whichSide, splits = 0;
+	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
+		// Check for the longest and shortest sides
+		shortSide = longSide = sqrt(CGAL::to_double(triangulation.segment(currentFace, 0).squared_length()));
+		whichSide = 0;
+		thisSide = sqrt(CGAL::to_double(triangulation.segment(currentFace, 1).squared_length()));
+		if (thisSide > longSide)
+      longSide = thisSide;
+		else if (thisSide < shortSide) {
+			shortSide = thisSide;
+			whichSide = 1;
+		}
+    thisSide = sqrt(CGAL::to_double(triangulation.segment(currentFace, 2).squared_length()));
+		if (thisSide > longSide)
+      longSide = thisSide;
+		else if (thisSide < shortSide) {
+			shortSide = thisSide;
+			whichSide = 2;
+		}
+		// Add constrained edge if they exceed the long/short ratio
+		if (longSide/shortSide >= ratio) {
+			currentFace->set_constraint(whichSide, true);
+			++splits;
+		}
+	}
+	std::cout << "\t" << splits << " constrained edges added." << std::endl;
 	std::cout << "\tRegions split (" << time(NULL)-thisTime << " s)." << std::endl;
-	
-	return returnValue;
+	return true;
 }
 
-bool PlanarPartition::repairTrianglesByNumberOfNeighbours(bool alsoUniverse) {
-	
-	if (state < TAGGED) {
-		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
-		return false;
-	} if (state > TAGGED) {
-		std::cout << "Triangulation already repaired!" << std::endl;
-		return false;
-	}
-	
-	std::cout << "Repairing triangles by number of neighbours..." << std::endl;
-	time_t thisTime = time(NULL);
-	
-	bool repaired = io.repairTrianglesByNumberOfNeighbours(triangulation, alsoUniverse);
-	
-	if (repaired) {
-		std::cout << "Repair successful (" << time(NULL)-thisTime << " s). All polygons are now valid." << std::endl;
-	} else {
-		std::cout << "Repair of all polygons not possible (" << time(NULL)-thisTime << " s)." << std::endl;
-	}
-	
-	// Return whether the planar partition is now valid
-	if (repaired) state = REPAIRED;
-	return repaired;
-}
-
-bool PlanarPartition::repairTrianglesByAbsoluteMajority(bool alsoUniverse) {
-	
-	if (state < TAGGED) {
-		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
-		return false;
-	} if (state > TAGGED) {
-		std::cout << "Triangulation already repaired!" << std::endl;
-		return false;
-	}
-	
-	std::cout << "Repairing triangles by absolute majority..." << std::endl;
-	time_t thisTime = time(NULL);
-	
-	bool repaired = io.repairTrianglesByAbsoluteMajority(triangulation, alsoUniverse);
-	
-	if (repaired) {
-		std::cout << "Repair successful (" << time(NULL)-thisTime << " s). All polygons are now valid." << std::endl;
-	} else {
-		std::cout << "Repair of all polygons not possible (" << time(NULL)-thisTime << " s)." << std::endl;
-	}
-	
-	// Return whether the planar partition is now valid
-	if (repaired) state = REPAIRED;
-	return repaired;
-}
-
-bool PlanarPartition::repairTrianglesByLongestBoundary(bool alsoUniverse) {
-	
-	if (state < TAGGED) {
-		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
-		return false;
-	} if (state > TAGGED) {
-		std::cout << "Triangulation already repaired!" << std::endl;
-		return false;
-	}
-	
-	std::cout << "Repairing triangles by longest boundary..." << std::endl;
-	time_t thisTime = time(NULL);
-	
-	bool repaired = io.repairTrianglesByLongestBoundary(triangulation, alsoUniverse);
-	
-	if (repaired) {
-		std::cout << "Repair successful (" << time(NULL)-thisTime << " s). All polygons are now valid." << std::endl;
-	} else {
-		std::cout << "Repair of all polygons not possible (" << time(NULL)-thisTime << " s)." << std::endl;
-	}
-	
-	// Return whether the planar partition is now valid
-	if (repaired) state = REPAIRED;
-	return repaired;
-}
-
-bool PlanarPartition::repairRegionsByLongestBoundary(bool alsoUniverse) {
-	
-	if (state < TAGGED) {
-		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
-		return false;
-	} if (state > TAGGED) {
-		std::cout << "Triangulation already repaired!" << std::endl;
-		return false;
-	}
-	
-	std::cout << "Repairing regions by longest boundary..." << std::endl;
-	time_t thisTime = time(NULL);
-	
-	bool repaired = io.repairRegionsByLongestBoundary(triangulation, alsoUniverse);
-	
-	if (repaired) {
-		std::cout << "Repair successful (" << time(NULL)-thisTime << " s). All polygons are now valid." << std::endl;
-	} else {
-		std::cout << "Repair of all polygons not possible (" << time(NULL)-thisTime << " s)." << std::endl;
-	}
-	
-	// Return whether the planar partition is now valid
-	if (repaired) state = REPAIRED;
-	return repaired;
-}
-
-
-bool PlanarPartition::repairRegionsByRandomNeighbour(bool alsoUniverse) {
-	if (state < TAGGED) {
-		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
-		return false;
-	}
-  if (state > TAGGED) {
-		std::cout << "Triangulation already repaired!" << std::endl;
-		return false;
-	}
-	
-	std::cout << "Repairing regions by random neighbour..." << std::endl;
-	time_t thisTime = time(NULL);
-	
-	bool repaired = io.repairRegionsByRandomNeighbour(triangulation, alsoUniverse);
-	
-	if (repaired) {
-		std::cout << "Repair successful (" << time(NULL)-thisTime << " s). All polygons are now valid." << std::endl;
-	} else {
-		std::cout << "Repair of all polygons not possible (" << time(NULL)-thisTime << " s)." << std::endl;
-	}
-	
-	// Return whether the planar partition is now valid
-	if (repaired) state = REPAIRED;
-	return repaired;
-}
-
-bool PlanarPartition::repairByPriorityList(const char *file) {
-	
-	if (state < TAGGED) {
-		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
-		return false;
-	} if (state > TAGGED) {
-		std::cout << "Triangulation already repaired!" << std::endl;
-		return false;
-	}
-	
-	std::cout << "Repairing by priority list..." << std::endl;
-	time_t thisTime = time(NULL);
-  
-  bool repaired = io.repairByPriorityList(triangulation, file);
-	
-	if (repaired) {
-		std::cout << "Repair successful (" << time(NULL)-thisTime << " s). All polygons are now valid." << std::endl;
-	} else {
-		std::cout << "Repair of all polygons not possible (" << time(NULL)-thisTime << " s)." << std::endl;
-	}
-	
-	// Return whether the planar partition is now valid
-	if (repaired) state = REPAIRED;
-	return repaired;
-}
-
-bool PlanarPartition::repairEdgeMatching(const char *file) {
-	
-	if (state < TAGGED) {
-		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
-		return false;
-	} if (state > TAGGED) {
-		std::cout << "Triangulation already repaired!" << std::endl;
-		return false;
-	}
-	
-	std::cout << "Repairing by priority list..." << std::endl;
-	time_t thisTime = time(NULL);
-  
-  bool repaired = io.repairEdgeMatching(triangulation, file);
-	
-	if (repaired) {
-		std::cout << "Repair successful (" << time(NULL)-thisTime << " s). All polygons are now valid." << std::endl;
-	} else {
-		std::cout << "Repair of all polygons not possible (" << time(NULL)-thisTime << " s)." << std::endl;
-	}
-	
-	// Return whether the planar partition is now valid
-	if (repaired) state = REPAIRED;
-	return repaired;
-}
-
-bool PlanarPartition::matchSchemata() {
-	
-	if (state < TAGGED) {
-		std::cout << "Triangulation not tagged. Cannot match schemata!" << std::endl;
-		return false;
-	} if (state < REPAIRED) std::cout << "Warning: Triangulation not yet repaired. There could be errors..." << std::endl;
-	if (state > REPAIRED) {
-		std::cout << "Polygons already reconstructed. Cannot match schemata!" << std::endl;
-		return false;
-	}
-	
-	bool returnValue = io.matchSchemata(triangulation);
-	
-	std::cout << "Schemata matched." << std::endl;
-	
-	return returnValue;
-}
 
 
 bool PlanarPartition::reconstructPolygons(bool removeVertices) {
@@ -1237,16 +1139,78 @@ bool PlanarPartition::exportPolygonsSHP(std::string &folder) {
 }
 
 
-bool PlanarPartition::exportTriangulation(const char *file, bool withNumberOfTags, bool withFields, bool withProvenance) {
-	
-	// To accept external triangulations for debugging, comment...
+bool PlanarPartition::exportTriangulation(std::string &file) {
 	if (state < TRIANGULATED || state > REPAIRED) {
 		std::cout << "No triangulation to export!" << std::endl;
 		return false;
 	}
-	
-	io.exportTriangulation(triangulation, file, withNumberOfTags, withFields, withProvenance);
-	
+  
+  std::cout << "Exporting triangulation as a SHP..." << std::endl;
+  
+	const char *driverName = "ESRI Shapefile";
+	OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
+	if (driver == NULL) {
+		std::cout << "Driver not found." << std::endl;
+		return false;
+	}
+	OGRDataSource *dataSource = driver->Open(file.c_str(), false);
+	if (dataSource != NULL) {
+		std::cout << "Erasing current file..." << std::endl;
+		if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
+			std::cout << "Couldn't erase current file." << std::endl;
+			return false;
+		}
+    OGRDataSource::DestroyDataSource(dataSource);
+	}
+	std::cout << "Writing file " << file << "..." << std::endl;
+	dataSource = driver->CreateDataSource(file.c_str(), NULL);
+	if (dataSource == NULL) {
+		std::cout << "Could not create file." << std::endl;
+		return false;
+	}
+	OGRLayer *layer = dataSource->CreateLayer("triangles", NULL, wkbPolygon, NULL);
+	if (layer == NULL) {
+		std::cout << "Could not create layer." << std::endl;
+		return false;
+	}
+  OGRFieldDefn numberOfTagsField("Tags", OFTInteger);
+  if (layer->CreateField(&numberOfTagsField) != OGRERR_NONE) {
+    std::cout << "Could not create field Tags." << std::endl;
+    return false;
+	}
+  
+  for (CDT::Finite_faces_iterator currentFace = triangulation.finite_faces_begin();
+       currentFace != triangulation.finite_faces_end();
+       ++currentFace) {
+		OGRLinearRing ring;
+		ring.addPoint(CGAL::to_double((*(*currentFace).vertex(0)).point().x()), CGAL::to_double((*(*currentFace).vertex(0)).point().y()), 0.0);
+		ring.addPoint(CGAL::to_double((*(*currentFace).vertex(1)).point().x()), CGAL::to_double((*(*currentFace).vertex(1)).point().y()), 0.0);
+		ring.addPoint(CGAL::to_double((*(*currentFace).vertex(2)).point().x()), CGAL::to_double((*(*currentFace).vertex(2)).point().y()), 0.0);
+		ring.addPoint(CGAL::to_double((*(*currentFace).vertex(0)).point().x()), CGAL::to_double((*(*currentFace).vertex(0)).point().y()), 0.0);
+		OGRPolygon polygon;
+		polygon.addRing(&ring);
+		OGRFeature *feature = OGRFeature::CreateFeature(layer->GetLayerDefn());
+//    if ((*currentFace).info().getTags() == NULL)
+//      feature->SetField("Tags", 0);
+//    else
+//      feature->SetField("Tags", (int)(*currentFace).info().numberOfTags());
+    // Put number of tags, the universe doesn't count
+    if ((*currentFace).info().getTags() == NULL) {
+      feature->SetField("Tags", 0);
+    }
+    else if ((*currentFace).info().getTags() != &universe) {
+      feature->SetField("Tags", (int)(*currentFace).info().numberOfTags());
+    }
+    else {
+      feature->SetField("Tags", 0);
+    }
+  	feature->SetGeometry(&polygon);
+		if (layer->CreateFeature(feature) != OGRERR_NONE)
+      std::cout << "Could not create feature." << std::endl;
+		// Free OGR feature
+		OGRFeature::DestroyFeature(feature);
+	}
+	OGRDataSource::DestroyDataSource(dataSource);
 	return true;
 }
 

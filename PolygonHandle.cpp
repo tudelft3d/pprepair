@@ -21,153 +21,6 @@
 
 #include "PolygonHandle.h"
 
-Field::~Field() {
-  
-}
-
-bool Field::operator<(Field &f) {
-	const Field *fp = &f;
-	Field *tp = this;
-	if (f.getType() != getType()) return fp < tp;
-	switch (getType()) {
-		case OFTString:
-			return (*(StringField *)fp) < (*(StringField *)tp);
-			break;
-		case OFTReal:
-			return (*(DoubleField *)fp) < (*(DoubleField *)tp);
-			break;
-		case OFTInteger:
-			return (*(IntField *)fp) < (*(IntField *)tp);
-			break;
-		default:
-			return false;
-			break;
-	}
-}
-
-bool Field::operator==(Field &f) {
-	const Field *fp = &f;
-	Field *tp = this;
-	if (f.getType() != getType()) return fp == tp;
-	switch (getType()) {
-		case OFTString:
-			return (*(StringField *)fp) == (*(StringField *)tp);
-			break;
-		case OFTReal:
-			return (*(DoubleField *)fp) == (*(DoubleField *)tp);
-			break;
-		case OFTInteger:
-			return (*(IntField *)fp) == (*(IntField *)tp);
-			break;
-		default:
-			return false;
-			break;
-	}
-}
-
-const char * Field::getValueAsString() {
-	std::cout << "Error: Getting value from abstract base class." << std::endl;
-	return "";
-}
-
-double Field::getValueAsDouble() {
-	std::cout << "Error: Getting value from abstract base class." << std::endl;
-	return 0.0;
-}
-
-int Field::getValueAsInt() {
-	std::cout << "Error: Getting value from abstract base class." << std::endl;
-	return 0;
-}
-
-void Field::setValueFromString(const char *v) {
-	std::cout << "Error: Setting value to abstract base class." << std::endl;
-}
-
-void Field::setValueFromDouble(double v) {
-	std::cout << "Error: Setting value to abstract base class." << std::endl;
-}
-
-void Field::setValueFromInt(int v) {
-	std::cout << "Error: Setting value to abstract base class." << std::endl;
-}
-
-StringField::StringField(const char *v) {
-	setValueFromString(v);
-}
-
-StringField::~StringField() {
-	free(contents);
-}
-
-bool StringField::operator<(const StringField &f) {
-	return strcmp(f.contents, contents) < 0;
-}
-
-bool StringField::operator==(const StringField &f) {
-	return strcmp(f.contents, contents) == 0;
-}
-
-const OGRFieldType StringField::getType() {
-	return OFTString;
-}
-
-const char * StringField::getValueAsString() {
-	return contents;
-}
-
-void StringField::setValueFromString(const char *v) {
-	contents = new char[(strlen(v)+1)];
-	strcpy(contents, v);
-}
-
-DoubleField::DoubleField(double v) {
-	setValueFromDouble(v);
-}
-
-bool DoubleField::operator<(const DoubleField &f) {
-	return f.contents < contents;
-}
-
-bool DoubleField::operator==(const DoubleField &f) {
-	return f.contents == contents;
-}
-
-const OGRFieldType DoubleField::getType() {
-	return OFTReal;
-}
-
-double DoubleField::getValueAsDouble() {
-	return contents;
-}
-
-void DoubleField::setValueFromDouble(double v) {
-	contents = v;
-}
-
-IntField::IntField(int v) {
-	setValueFromInt(v);
-}
-
-bool IntField::operator<(const IntField &f) {
-	return f.contents < contents;
-}
-
-bool IntField::operator==(const IntField &f) {
-	return f.contents == contents;
-}
-
-const OGRFieldType IntField::getType() {
-	return OFTInteger;
-}
-
-int IntField::getValueAsInt() {
-	return contents;
-}
-
-void IntField::setValueFromInt(int v) {
-	contents = v;
-}
 
 PolygonHandle::PolygonHandle(OGRFeature* f) {
   feature = f;
@@ -178,6 +31,7 @@ PolygonHandle::~PolygonHandle() {
 //	for (unsigned int i = 0; i < fields.size(); ++i) {
 //		delete fields[i];
 //	}
+  // TODO: clear OGR memory?
 }
 
 std::string PolygonHandle::getValueAttributeAsString(std::string attr) {
@@ -188,29 +42,6 @@ std::string PolygonHandle::getValueAttributeAsString(std::string attr) {
     return feature->GetFieldAsString(i);
 }
 
-void PolygonHandle::addField(Field *field) {
-	fields.push_back(field);
-}
-
-Field * PolygonHandle::getSchemaField() {
-	return fields[schemaIndex];
-}
-
-Field * PolygonHandle::getField(unsigned int i) {
-	return fields[i];
-}
-
-unsigned int PolygonHandle::getNumberOfFields() {
-	return fields.size();
-}
-
-char * PolygonHandle::getOriginalFile() {
-	return originalFile;
-}
-
-unsigned int PolygonHandle::getLayer() {
-	return layer;
-}
 
 const bool PolygonHandle::isMultiPolygonHandle() {
 	return false;
@@ -233,6 +64,7 @@ MultiPolygonHandle::~MultiPolygonHandle() {
 //	for (unsigned int i = 0; i < fields.size(); ++i) {
 //		delete fields[i];
 //	}
+  // TODO: clear OGR memory here perhaps?
 }
 
 const bool MultiPolygonHandle::isMultiPolygonHandle() {
