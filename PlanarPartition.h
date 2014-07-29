@@ -31,7 +31,8 @@ public:
 	PlanarPartition();
 	~PlanarPartition();
   
-  bool addOGRdataset(std::string &file, bool extent = false);
+  bool addOGRdataset(std::string &file);
+  bool addOGRdatasetExtent(std::string &file);
   bool buildPP(); //-- this is effectively tagTriangulation()
   bool isValid(); //-- are there gaps and/or overlaps?
   

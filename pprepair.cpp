@@ -74,7 +74,7 @@ int main (int argc, char* const argv[]) {
     }
     //-- add spatial extent
     if (extent.getValue() != "") {
-      pp.addOGRdataset(extent.getValue(), true);
+      pp.addOGRdatasetExtent(extent.getValue());
     }
     std::cout << "Total input polygons: " << pp.noPolygons() << std::endl;
     

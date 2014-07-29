@@ -45,19 +45,20 @@ int PlanarPartition::noPolygons() {
   return polygons.size();
 }
 
-bool PlanarPartition::addOGRdataset(std::string &file, bool extent) {
+bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
+  std::cout << "Spatial extent" << std::endl;
+  hasExtent = true;
+  addOGRdataset(file);
+  return true;
+}
+
+bool PlanarPartition::addOGRdataset(std::string &file) {
   // Check if we have already made changes to the triangulation
   if (state > TRIANGULATED) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
 		return false;
 	}
-  if (extent == true){
-    std::cout << "Adding spatial extent dataset" << std::endl << "\t" << file << std::endl;
-    hasExtent = true;
-  }
-  else {
-    std::cout << "Adding new dataset" << std::endl << "\t" << file << std::endl;
-  }
+  std::cout << "Adding dataset" << std::endl << "\t" << file << std::endl;
   std::vector<OGRFeature*> lsInputFeatures;
   getOGRFeatures(file, lsInputFeatures);
   //-- keep track of all the OGRFeatureDefn that come in, for PL/EM repair
