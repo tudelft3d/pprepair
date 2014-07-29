@@ -46,11 +46,50 @@ int PlanarPartition::noPolygons() {
 }
 
 bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
-  std::cout << "Spatial extent" << std::endl;
+  std::cout << "Adding spatial extent dataset" << std::endl << "\t" << file << std::endl;
+
+  //-- construct the "bbox with a hole" here
+  OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
+	if (dataSource == NULL) {
+		std::cerr << "Error: Could not open file." << std::endl;
+		return false;
+	}
+  OGRLayer *dataLayer = dataSource->GetLayer(0);
+	unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
+  if (numberOfPolygons != 1) {
+		std::cerr << "Error: Spatial Extent file has more than 1 feature." << std::endl;
+		return false;
+  }
+  dataLayer->ResetReading();
+  OGRFeature *feature;
+  feature = dataLayer->GetNextFeature();
+  if (feature->GetGeometryRef()->getGeometryType() != wkbPolygon) {
+		std::cerr << "Error: Spatial Extent feature not a Polygon." << std::endl;
+		return false;
+  }
+//  OGRPolygon *geometry = static_cast<OGRPolygon *>(feature->GetGeometryRef());
+  OGRGeometry geometry = feature->GetGeometryRef();
+  OGREnvelope *psEnvelope = NULL;
+  geometry->getEnvelope(psEnvelope);
+  std::cout << psEnvelope->MinX << std::endl;
+  OGRLinearRing *oring = geometry->getExteriorRing();
+  
+//  OGRPolygon polygon;
+//  OGRLinearRing outerRing;
+//  OGRFeature* f = currentPolygon->first->feature;
+//  outerRing.addPoint(CGAL::to_double(currentVertex->x()), CGAL::to_double(currentVertex->y()));
+//  polygon.addRing(&outerRing);
+//  polygon.addRing(&outerRing);
+  
+//  OGRFeature::DestroyFeature(feature);
+//  OGRDataSource::DestroyDataSource(dataSource);
+//  return true;
+  
   hasExtent = true;
-  addOGRdataset(file);
+//  addOGRdataset(file);
   return true;
 }
+
 
 bool PlanarPartition::addOGRdataset(std::string &file) {
   // Check if we have already made changes to the triangulation
@@ -68,6 +107,9 @@ bool PlanarPartition::addOGRdataset(std::string &file) {
   addFeatures(lsInputFeatures);
   return true;
 }
+
+
+
 
 
 bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
