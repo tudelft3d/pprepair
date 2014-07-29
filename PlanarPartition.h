@@ -31,7 +31,7 @@ public:
 	PlanarPartition();
 	~PlanarPartition();
   
-  bool addOGRdataset(std::string &file);
+  bool addOGRdataset(std::string &file, bool extent = false);
   bool buildPP(); //-- this is effectively tagTriangulation()
   bool isValid(); //-- are there gaps and/or overlaps?
   
@@ -48,6 +48,7 @@ public:
 //  bool addAllowedHole(Point p); // TODO: where is that code? ever existed?
 //  bool addAllowedHoles(const char *file);
   bool splitRegions(double ratio);
+  bool hasSpatialExtent();
 
   
 private:
@@ -55,7 +56,9 @@ private:
   TaggingVector edgesToTag;
   std::vector<std::pair<PolygonHandle *, Polygon> > outputPolygons;
   std::vector<PolygonHandle *> polygons;
-  PolygonHandle universe;
+  PolygonHandle universetag;
+  PolygonHandle extenttag;
+  bool hasExtent = false;
   Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
 
   std::vector<OGRFeatureDefn*> allFeatureDefns; //-- all the FeatureDefn of all the input datasets
@@ -64,6 +67,7 @@ private:
   bool repairLB(bool alsoUniverse = true);                          //-- Longest Boundary
   bool repairPL(const std::string &file, bool alsoUniverse = true); //-- Priority List
   bool repairEM(const std::string &file, bool alsoUniverse = true); //-- Edge-Matching
+  void repairSpatialExtent();                                       //-- Spatial Extent
   
   bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures);
@@ -73,6 +77,10 @@ private:
   void removeVertices();
   void removeConstraints();
   std::list<Triangulation::Vertex_handle>* getBoundary(Triangulation::Face_handle face, int edge, PolygonHandle *polygon);
+  void removeAllExtentTags();
+  void expandTriangleIntoRegion(Triangulation::Finite_faces_iterator &currentFace,
+                                std::set<Triangulation::Face_handle> &facesInRegion,
+                                std::set<Triangulation::Face_handle> &processedFaces);
   
   enum State {
     CREATED,

@@ -46,7 +46,7 @@ int main (int argc, char* const argv[]) {
   TCLAP::CmdLine cmd("Allowed options", ' ', "");
   try {
     TCLAP::MultiArg<std::string> inputDSs       ("i", "input", "input OGR dataset (this can be used more than once)", true, "string");
-    TCLAP::ValueArg<std::string> spatialextent  ("e", "extent", "spatial extent", false, "", "string");
+    TCLAP::ValueArg<std::string> extent         ("e", "extent", "spatial extent", false, "", "string");
     TCLAP::ValueArg<std::string> outfiles       ("o", "output", "folder for repaired file(s) (SHP only)", false, "","string");
     TCLAP::ValueArg<std::string> repair         ("r", "repair", "repair method used: RN/LB/PL/EM", false, "", &rmVals);
     TCLAP::SwitchArg             validation     ("v", "validation", "validation only (gaps and overlaps reported)", false);
@@ -56,7 +56,7 @@ int main (int argc, char* const argv[]) {
 
 
     cmd.add(inputDSs);
-    cmd.add(spatialextent);
+    cmd.add(extent);
     cmd.add(outfiles);
     cmd.add(outerrors);
     cmd.add(outtr);
@@ -64,15 +64,21 @@ int main (int argc, char* const argv[]) {
 //    cmd.add(repair);
 //    cmd.add(validation);
     cmd.xorAdd(repair, validation);
-    
     cmd.parse( argc, argv );
     
+    //-- add input datasets to PP
     PlanarPartition pp;      
     std::vector<std::string> inputs = inputDSs.getValue();
     for (std::vector<std::string>::iterator it = inputs.begin() ; it != inputs.end(); ++it) {
       pp.addOGRdataset(*it);
     }
+    //-- add spatial extent
+    if (extent.getValue() != "") {
+      pp.addOGRdataset(extent.getValue(), true);
+    }
     std::cout << "Total input polygons: " << pp.noPolygons() << std::endl;
+    
+    //-- tag the triangulation
     pp.buildPP();
     
     //-- validation only
@@ -87,6 +93,7 @@ int main (int argc, char* const argv[]) {
     }
     else {
       pp.printInfo();
+      
       if (repair.getValue() == "PL") {
         pp.repair("PL", true, priority.getValue());
       }
