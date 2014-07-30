@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2009-2013,
+ Copyright (c) 2009-2014,
  Ken Arroyo Ohori    g.a.k.arroyoohori@tudelft.nl
  Hugo Ledoux         h.ledoux@tudelft.nl
  Martijn Meijers     b.m.meijers@tudelft.nl
@@ -33,7 +33,6 @@ public:
   
   bool addOGRdataset(std::string &file);
   bool addOGRdatasetExtent(std::string &file);
-  bool addOGR_SEHOLE(std::string &file);
   bool buildPP(); //-- this is effectively tagTriangulation()
   bool isValid(); //-- are there gaps and/or overlaps?
   
@@ -69,7 +68,8 @@ private:
   bool repairLB(bool alsoUniverse = true);                          //-- Longest Boundary
   bool repairPL(const std::string &file, bool alsoUniverse = true); //-- Priority List
   bool repairEM(const std::string &file, bool alsoUniverse = true); //-- Edge-Matching
-  void repairSpatialExtent();                                       //-- Spatial Extent
+  //-- Spatial Extent, called automatically by repair when there's a spatial extent passed as input
+  void repairSpatialExtent();
   
   bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures);
@@ -83,7 +83,6 @@ private:
   void expandTriangleIntoRegion(Triangulation::Finite_faces_iterator &currentFace,
                                 std::set<Triangulation::Face_handle> &facesInRegion,
                                 std::set<Triangulation::Face_handle> &processedFaces);
-  
   enum State {
     CREATED,
     TRIANGULATED,

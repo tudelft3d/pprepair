@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2009-2013,
+ Copyright (c) 2009-2014,
  Ken Arroyo Ohori    g.a.k.arroyoohori@tudelft.nl
  Hugo Ledoux         h.ledoux@tudelft.nl
  Martijn Meijers     b.m.meijers@tudelft.nl
@@ -50,9 +50,7 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
 		return false;
 	}
-  
   std::cout << "Adding spatial extent dataset" << std::endl << "\t" << file << std::endl;
-  //-- construct the "bbox with a hole" here
   OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
 	if (dataSource == NULL) {
 		std::cerr << "Error: Could not open file." << std::endl;
@@ -74,7 +72,7 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
   OGRPolygon *geometry = static_cast<OGRPolygon *>(feature->GetGeometryRef());
   OGREnvelope psEnvelope;
   geometry->getEnvelope(&psEnvelope);
-
+  //-- create a bigger bbox with the polygon as a hole
   double shift = 1000;
   OGRLinearRing *iring = geometry->getExteriorRing();
   iring->reversePoints();
@@ -87,20 +85,12 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
   OGRPolygon hole;
   hole.addRing(&oring);
   hole.addRing(iring);
-  feature->SetGeometry(NULL);
   feature->SetGeometry(&hole);
   std::vector<OGRFeature*> ls;
   ls.push_back(feature->Clone());
   allFeatureDefns.push_back(feature->GetDefnRef());
   addFeatures(ls);
   OGRDataSource::DestroyDataSource(dataSource);
-  hasExtent = true;
-  return true;
-}
-
-bool PlanarPartition::addOGR_SEHOLE(std::string &file) {
-  std::cout << "Adding spatial extent dataset" << std::endl << "\t" << file << std::endl;
-  addOGRdataset(file);
   hasExtent = true;
   return true;
 }
@@ -114,7 +104,8 @@ bool PlanarPartition::addOGRdataset(std::string &file) {
 	}
   std::cout << "Adding dataset" << std::endl << "\t" << file << std::endl;
   std::vector<OGRFeature*> lsInputFeatures;
-  getOGRFeatures(file, lsInputFeatures);
+  if (getOGRFeatures(file, lsInputFeatures) == false)
+    return false;
   //-- keep track of all the OGRFeatureDefn that come in, for PL/EM repair
   if (lsInputFeatures.size() > 0) {
     allFeatureDefns.push_back(lsInputFeatures[0]->GetDefnRef());
@@ -122,9 +113,6 @@ bool PlanarPartition::addOGRdataset(std::string &file) {
   addFeatures(lsInputFeatures);
   return true;
 }
-
-
-
 
 
 bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
@@ -888,6 +876,7 @@ bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const
   if (hasExtent == true)
     repairSpatialExtent();
 	
+  //-- repair with the specific chosen method
   time_t thisTime = time(NULL);
   bool repaired;
   if (method == "RN") {

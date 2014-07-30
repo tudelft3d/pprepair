@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2009-2013,
+ Copyright (c) 2009-2014,
  Ken Arroyo Ohori    g.a.k.arroyoohori@tudelft.nl
  Hugo Ledoux         h.ledoux@tudelft.nl
  Martijn Meijers     b.m.meijers@tudelft.nl
@@ -22,17 +22,6 @@
 #include "PlanarPartition.h"
 #include <tclap/CmdLine.h>
 
-enum RepairMethod {
-  VALIDATE_ONLY = -1,
-  NUMBER_OF_NEIGHBOURS = 0,
-  ABSOLUTE_MAJORITY = 1,
-  LONGEST_BOUNDARY = 2,
-  REGIONS_BY_LONGEST_BOUNDARY = 3,
-  REGIONS_BY_RANDOM_NEIGHBOUR = 4,
-  PRIORITY_LIST = 5,
-  PRIORITY_LIST_EDGEMATCHING = 6
-};
-
 
 int main (int argc, char* const argv[]) {
   
@@ -54,15 +43,12 @@ int main (int argc, char* const argv[]) {
     TCLAP::ValueArg<std::string> outerrors      ("",  "outerrors", "errors to a shapefile", false, "","string");
     TCLAP::ValueArg<std::string> outtr          ("",  "outtr", "output triangulation to a shapefile", false, "","string");
 
-
     cmd.add(inputDSs);
     cmd.add(extent);
     cmd.add(outfiles);
     cmd.add(outerrors);
     cmd.add(outtr);
     cmd.add(priority);
-//    cmd.add(repair);
-//    cmd.add(validation);
     cmd.xorAdd(repair, validation);
     cmd.parse( argc, argv );
     
@@ -80,7 +66,6 @@ int main (int argc, char* const argv[]) {
         throw false;
     }
 
-    
     //-- tag the triangulation
     pp.buildPP();
     
@@ -94,7 +79,7 @@ int main (int argc, char* const argv[]) {
         std::cout << "\nValidation:\n\t planar partition is valid." << std::endl;
       }
     }
-    else {
+    else { //-- repairing
       pp.printInfo();
       
       if (repair.getValue() == "PL") {
