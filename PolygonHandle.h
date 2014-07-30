@@ -32,6 +32,7 @@ public:
   
   OGRFeature* feature;
   std::string getValueAttributeAsString(std::string attr);
+  std::string getDSName();
   
 	virtual const bool isMultiPolygonHandle();
 };

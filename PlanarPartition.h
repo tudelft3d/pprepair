@@ -59,15 +59,16 @@ private:
   std::vector<PolygonHandle *> polygons;
   PolygonHandle universetag;
   PolygonHandle extenttag;
-  bool hasExtent = false;
+  bool hasExtent;
   Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
 
   std::vector<OGRFeatureDefn*> allFeatureDefns; //-- all the FeatureDefn of all the input datasets
 
-  bool repairRN(bool alsoUniverse = true);                          //-- Random Neighbour
-  bool repairLB(bool alsoUniverse = true);                          //-- Longest Boundary
-  bool repairPL(const std::string &file, bool alsoUniverse = true); //-- Priority List
-  bool repairEM(const std::string &file, bool alsoUniverse = true); //-- Edge-Matching
+  bool repairRN  (bool alsoUniverse = true);                          //-- Random Neighbour
+  bool repairLB  (bool alsoUniverse = true);                          //-- Longest Boundary
+  bool repairPL  (const std::string &file, bool alsoUniverse = true); //-- Priority List
+  bool repairEMPo(const std::string &file, bool alsoUniverse = true); //-- Edge-Matching prio based on polygon's attribute and prio list
+  bool repairEMDS(const std::string &file, bool alsoUniverse = true); //-- Edge-Matching prio based on DataSet order
   //-- Spatial Extent, called automatically by repair when there's a spatial extent passed as input
   void repairSpatialExtent();
   

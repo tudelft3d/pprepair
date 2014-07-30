@@ -26,10 +26,12 @@
 int main (int argc, char* const argv[]) {
   
   std::vector<std::string> repairMethods;
-  repairMethods.push_back("RN"); //-- random neighbour
-  repairMethods.push_back("LB"); //-- longest boundary
-  repairMethods.push_back("PL"); //-- priority list
-  repairMethods.push_back("EM"); //-- edge-matching
+  repairMethods.push_back("fix");  //-- fix == randome neighbourg
+  repairMethods.push_back("RN");   //-- random neighbour
+  repairMethods.push_back("LB");   //-- longest boundary
+  repairMethods.push_back("PL");   //-- priority list
+  repairMethods.push_back("EMPo"); //-- edge-matching with priority given by polygon's attribute
+  repairMethods.push_back("EMDS"); //-- edge-matching with priority given by dataset order
   TCLAP::ValuesConstraint<std::string> rmVals(repairMethods);
 
   TCLAP::CmdLine cmd("Allowed options", ' ', "");
@@ -83,10 +85,26 @@ int main (int argc, char* const argv[]) {
       pp.printInfo();
       
       if (repair.getValue() == "PL") {
-        pp.repair("PL", true, priority.getValue());
+        if (priority.getValue() == "") {
+          std::cout << "Priority file must be provided." << std::endl;
+          throw false;
+        }
+        else
+          if (pp.repair("PL", true, priority.getValue()) == false)
+            throw false;
       }
+      else if ( (repair.getValue() == "EMPo") || (repair.getValue() == "EMDS") ) {
+        if (priority.getValue() == "") {
+          std::cout << "Priority file must be provided." << std::endl;
+          throw false;
+        }
+        else
+          if (pp.repair(repair.getValue(), true, priority.getValue()) == false)
+            throw false;
+        }
       else {
-        pp.repair(repair.getValue());
+        if (pp.repair(repair.getValue()) == false)
+          throw false;
       }
       //-- if there was a 'tie' then fix with RN
       if (pp.isValid() == false) {
@@ -113,10 +131,10 @@ int main (int argc, char* const argv[]) {
     return(0);
   }
   catch (bool problems) {
-    std::cerr << "Abort." << std::endl;
+    std::cerr << "Aborted." << std::endl;
     return(0);
   }
-  
+  std::cout << "\nSuccessfully terminated." << std::endl;
   return(1);
 }
 
