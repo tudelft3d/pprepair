@@ -46,8 +46,12 @@ int PlanarPartition::noPolygons() {
 }
 
 bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
+  if (state > TRIANGULATED) {
+    std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
+		return false;
+	}
+  
   std::cout << "Adding spatial extent dataset" << std::endl << "\t" << file << std::endl;
-
   //-- construct the "bbox with a hole" here
   OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
 	if (dataSource == NULL) {
@@ -67,26 +71,37 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
 		std::cerr << "Error: Spatial Extent feature not a Polygon." << std::endl;
 		return false;
   }
-//  OGRPolygon *geometry = static_cast<OGRPolygon *>(feature->GetGeometryRef());
-  OGRGeometry geometry = feature->GetGeometryRef();
-  OGREnvelope *psEnvelope = NULL;
-  geometry->getEnvelope(psEnvelope);
-  std::cout << psEnvelope->MinX << std::endl;
-  OGRLinearRing *oring = geometry->getExteriorRing();
-  
-//  OGRPolygon polygon;
-//  OGRLinearRing outerRing;
-//  OGRFeature* f = currentPolygon->first->feature;
-//  outerRing.addPoint(CGAL::to_double(currentVertex->x()), CGAL::to_double(currentVertex->y()));
-//  polygon.addRing(&outerRing);
-//  polygon.addRing(&outerRing);
-  
-//  OGRFeature::DestroyFeature(feature);
-//  OGRDataSource::DestroyDataSource(dataSource);
-//  return true;
-  
+  OGRPolygon *geometry = static_cast<OGRPolygon *>(feature->GetGeometryRef());
+  OGREnvelope psEnvelope;
+  geometry->getEnvelope(&psEnvelope);
+
+  double shift = 1000;
+  OGRLinearRing *iring = geometry->getExteriorRing();
+  iring->reversePoints();
+  OGRLinearRing oring;
+  oring.addPoint(psEnvelope.MinX - shift, psEnvelope.MinY - shift);
+  oring.addPoint(psEnvelope.MinX - shift, psEnvelope.MaxY + shift);
+  oring.addPoint(psEnvelope.MaxX + shift, psEnvelope.MaxY + shift);
+  oring.addPoint(psEnvelope.MaxX + shift, psEnvelope.MinY - shift);
+  oring.addPoint(psEnvelope.MinX - shift, psEnvelope.MinY - shift);
+  OGRPolygon hole;
+  hole.addRing(&oring);
+  hole.addRing(iring);
+  feature->SetGeometry(NULL);
+  feature->SetGeometry(&hole);
+  std::vector<OGRFeature*> ls;
+  ls.push_back(feature->Clone());
+  allFeatureDefns.push_back(feature->GetDefnRef());
+  addFeatures(ls);
+  OGRDataSource::DestroyDataSource(dataSource);
   hasExtent = true;
-//  addOGRdataset(file);
+  return true;
+}
+
+bool PlanarPartition::addOGR_SEHOLE(std::string &file) {
+  std::cout << "Adding spatial extent dataset" << std::endl << "\t" << file << std::endl;
+  addOGRdataset(file);
+  hasExtent = true;
   return true;
 }
 
@@ -229,34 +244,6 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
 }
 
 
-
-bool PlanarPartition::validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures) {
-  for (std::vector<OGRFeature*>::iterator it = lsOGRFeatures.begin() ; it != lsOGRFeatures.end(); ++it) {
-    switch((*it)->GetGeometryRef()->getGeometryType()) {
-      case wkbPolygon:
-      case wkbPolygon25D: {
-        OGRPolygon *geometry = (OGRPolygon *)(*it)->GetGeometryRef();
-//        OGRPolygon* a = (OGRPolygon *)geometry->clone();
-        break;
-      }
-      case wkbMultiPolygon:
-      case wkbMultiPolygon25D: {
-        OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*it)->GetGeometryRef());
-        for (int cur = 0; cur < geometry->getNumGeometries(); cur++) {
-          OGRPolygon *thisGeometry = (OGRPolygon *)geometry->getGeometryRef(cur);
-//            OGRPolygon* a = (OGRPolygon *)thisGeometry->clone();
-//            lsOGRFeatures.push_back(a);
-        }
-        break;
-      }
-      default: {
-        std::cout << "UNKNOWN GEOMETRY TYPE, skipping feature." << std::endl;
-      }
-    }
-  }
-  return true;
-}
-
 bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures) {
 	OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
 	if (dataSource == NULL) {
@@ -289,6 +276,34 @@ bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> 
   // Free OGR data source
   OGRDataSource::DestroyDataSource(dataSource);
   std::cout << "\tdone." << std::endl;
+  return true;
+}
+
+
+bool PlanarPartition::validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures) {
+  for (std::vector<OGRFeature*>::iterator it = lsOGRFeatures.begin() ; it != lsOGRFeatures.end(); ++it) {
+    switch((*it)->GetGeometryRef()->getGeometryType()) {
+      case wkbPolygon:
+      case wkbPolygon25D: {
+        OGRPolygon *geometry = (OGRPolygon *)(*it)->GetGeometryRef();
+        //        OGRPolygon* a = (OGRPolygon *)geometry->clone();
+        break;
+      }
+      case wkbMultiPolygon:
+      case wkbMultiPolygon25D: {
+        OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*it)->GetGeometryRef());
+        for (int cur = 0; cur < geometry->getNumGeometries(); cur++) {
+          OGRPolygon *thisGeometry = (OGRPolygon *)geometry->getGeometryRef(cur);
+          //            OGRPolygon* a = (OGRPolygon *)thisGeometry->clone();
+          //            lsOGRFeatures.push_back(a);
+        }
+        break;
+      }
+      default: {
+        std::cout << "UNKNOWN GEOMETRY TYPE, skipping feature." << std::endl;
+      }
+    }
+  }
   return true;
 }
 
@@ -896,9 +911,8 @@ bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const
 		std::cout << "Repair of all polygons not possible (" << time(NULL)-thisTime << " s)." << std::endl;
 	}
 	//-- handling of tags for spatial extent
-  if (hasExtent == true) {
+  if (hasExtent == true)
     removeAllExtentTags();
-  }
   if (repaired)
     state = REPAIRED;
 	return repaired;
