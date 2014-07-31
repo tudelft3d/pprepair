@@ -68,11 +68,16 @@ private:
   bool repairRN  (bool alsoUniverse = true);                          //-- Random Neighbour
   bool repairLB  (bool alsoUniverse = true);                          //-- Longest Boundary
   bool repairPL  (const std::string &file, bool alsoUniverse = true); //-- Priority List
-  bool repairEMPo(const std::string &file, bool alsoUniverse = true); //-- Edge-Matching prio based on polygon's attribute and prio list
-  bool repairEMDS(const std::string &file, bool alsoUniverse = true); //-- Edge-Matching prio based on DataSet order
-  //-- Spatial Extent, called automatically by repair when there's a spatial extent passed as input
+
   void repairSpatialExtent();
+  bool repairEM_attribute(std::map<std::string, unsigned int> &priorityMap,
+                         std::string &att,
+                         bool alsoUniverse = true); //-- Edge-Matching prio based on polygon's attribute and prio list
+  bool repairEM_dataset(std::map<std::string, unsigned int> &priorityMap,
+                       bool alsoUniverse = true); //-- Edge-Matching prio based on DataSet order
+
   
+  bool getPriorityList(const std::string &priofile, std::map<std::string, unsigned int> &priorityMap, std::string &attr);
   bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures);
   bool addFeatures(std::vector<OGRFeature*> &lsOGRFeatures);

@@ -28,6 +28,7 @@ PlanarPartition::PlanarPartition() {
 	// Set internal states
 	state = CREATED;
   hasExtent = false;
+//  _bbox
 	// std::cout precision (for debugging)
 	std::cout.setf(std::ios::fixed,std::ios::floatfield);
 	std::cout.precision(6);
@@ -63,7 +64,14 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
 		std::cerr << "Error: Spatial Extent file has more than 1 feature." << std::endl;
 		return false;
   }
+
   dataLayer->ResetReading();
+  OGREnvelope bbox;
+  dataLayer->GetExtent(&bbox);
+  _bbox.Merge(bbox);
+  std::cout << _bbox.MinX << "," << _bbox.MinY << std::endl;
+  std::cout << _bbox.MaxX << "," << _bbox.MaxY << std::endl;
+  
   OGRFeature *feature;
   feature = dataLayer->GetNextFeature();
   if (feature->GetGeometryRef()->getGeometryType() != wkbPolygon) {
@@ -71,18 +79,16 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
 		return false;
   }
   OGRPolygon *geometry = static_cast<OGRPolygon *>(feature->GetGeometryRef());
-  OGREnvelope psEnvelope;
-  geometry->getEnvelope(&psEnvelope);
   //-- create a bigger bbox with the polygon as a hole
-  double shift = 1000;
+  double shift = 10000;
   OGRLinearRing *iring = geometry->getExteriorRing();
   iring->reversePoints();
   OGRLinearRing oring;
-  oring.addPoint(psEnvelope.MinX - shift, psEnvelope.MinY - shift);
-  oring.addPoint(psEnvelope.MinX - shift, psEnvelope.MaxY + shift);
-  oring.addPoint(psEnvelope.MaxX + shift, psEnvelope.MaxY + shift);
-  oring.addPoint(psEnvelope.MaxX + shift, psEnvelope.MinY - shift);
-  oring.addPoint(psEnvelope.MinX - shift, psEnvelope.MinY - shift);
+  oring.addPoint(_bbox.MinX - shift, _bbox.MinY - shift);
+  oring.addPoint(_bbox.MinX - shift, _bbox.MaxY + shift);
+  oring.addPoint(_bbox.MaxX + shift, _bbox.MaxY + shift);
+  oring.addPoint(_bbox.MaxX + shift, _bbox.MinY - shift);
+  oring.addPoint(_bbox.MinX - shift, _bbox.MinY - shift);
   OGRPolygon hole;
   hole.addRing(&oring);
   hole.addRing(iring);
@@ -242,9 +248,10 @@ bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> 
 	int numberOfLayers = dataSource->GetLayerCount();
   for (int currentLayer = 0; currentLayer < numberOfLayers; currentLayer++) {
     OGRLayer *dataLayer = dataSource->GetLayer(currentLayer);
+    //-- get bbox of dataset and update global one
     OGREnvelope bbox;
     dataLayer->GetExtent(&bbox);
-    std::cout << "minx: " << bbox.MinX << std::endl;
+    _bbox.Merge(bbox);
     dataLayer->ResetReading();
     unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
     std::cout << "\tReading layer #" << currentLayer+1 << " (" << numberOfPolygons << " polygons)" << std::endl;
@@ -662,37 +669,10 @@ bool PlanarPartition::repairPL(const std::string &file, bool alsoUniverse) {
 }
 
 
-bool PlanarPartition::repairEMPo(const std::string &file, bool alsoUniverse) {
-  
-  //-- 1. Fetch the priority list in the file
-  std::ifstream priofile(file.c_str(), std::ifstream::in);
-  if (!priofile)
-  {
-    std::cout << "Priority file could not be opened." << std::endl;
-    return false;
-  }
-  //-- each polygon must have the attribute used for repair, otherwise abort repair
-  std::string att;
-  std::getline(priofile, att);
-  for (std::vector<OGRFeatureDefn*>::const_iterator it = allFeatureDefns.begin();
-       it != allFeatureDefns.end();
-       it++) {
-    if ( (*it)->GetFieldIndex(att.c_str()) == -1) {
-      std::cout << "File " << (*it)->GetName() << " doesn't have the attribute " << att << std::endl;
-      return false;
-    }
-  }
-  std::map<std::string, unsigned int> priorityMap;
-  unsigned int c = 0;
-  while (!priofile.eof()) {
-    std::string value;
-    std::getline(priofile, value);
-    if (value != "") {
-      priorityMap[value] = c;
-      c++;
-    }
-  }
-  priofile.close();
+
+bool PlanarPartition::repairEM_attribute(std::map<std::string, unsigned int> &priorityMap,
+                                         std::string &att,
+                                         bool alsoUniverse) {
   
   // Use a temporary vector to make it deterministic and order independent
   std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
@@ -800,40 +780,7 @@ bool PlanarPartition::repairEMPo(const std::string &file, bool alsoUniverse) {
   return true;
 }
 
-bool PlanarPartition::repairEMDS(const std::string &file, bool alsoUniverse) {
-  
-  //-- 1. Fetch the priority list in the file
-  std::ifstream priofile(file.c_str(), std::ifstream::in);
-  if (!priofile)
-  {
-    std::cout << "Priority file could not be opened." << std::endl;
-    return false;
-  }
-
-  // //-- each polygon must have the attribute used for repair, otherwise abort repair
-  // std::string att;
-  // std::getline(priofile, att);
-  // for (std::vector<OGRFeatureDefn*>::const_iterator it = allFeatureDefns.begin();
-  //      it != allFeatureDefns.end();
-  //      it++) {
-  //   if ( (*it)->GetFieldIndex(att.c_str()) == -1) {
-  //     std::cout << "File " << (*it)->GetName() << " doesn't have the attribute " << att << std::endl;
-  //     return false;
-  //   }
-  // }
-
-  std::map<std::string, unsigned int> priorityMap;
-  unsigned int c = 0;
-  while (!priofile.eof()) {
-    std::string value;
-    std::getline(priofile, value);
-    if (value != "") {
-      priorityMap[value] = c;
-      c++;
-    }
-  }
-  priofile.close();
-  
+bool PlanarPartition::repairEM_dataset(std::map<std::string, unsigned int> &priorityMap, bool alsoUniverse) {
   // Use a temporary vector to make it deterministic and order independent
   std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
   std::set<Triangulation::Face_handle> processedFaces;
@@ -1008,8 +955,8 @@ bool PlanarPartition::repairRN(bool alsoUniverse) {
 }
 
 
-// TODO: tie cases?
-bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const std::string &priority) {
+
+bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const std::string &priofile) {
 	if (state < TAGGED) {
 		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
 		return false;
@@ -1036,15 +983,21 @@ bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const
   }
   else if (method == "PL") {
     std::cout << "Repairing by priority list..." << std::endl;
-    repaired = repairPL(priority, alsoUniverse);
+    repaired = repairPL(priofile, alsoUniverse);
   }
-  else if (method == "EMPo") {
-    std::cout << "Repairing with edge-matching technique..." << std::endl;
-    repaired = repairEMPo(priority, alsoUniverse);
-  }
-  else if (method == "EMDS") {
-    std::cout << "Repairing with edge-matching technique..." << std::endl;
-    repaired = repairEMDS(priority, alsoUniverse);
+  else if (method == "EM") {
+    std::cout << "Repairing with edge-matching method...";
+    std::map<std::string, unsigned int> priorityMap;
+    std::string attr;
+    getPriorityList(priofile, priorityMap, attr);
+    if (attr == "datasets") {
+      std::cout << "datasets." << std::endl;
+      repaired = repairEM_dataset(priorityMap, alsoUniverse);
+    }
+    else {
+      std::cout << "with attributes." << std::endl;
+      repaired = repairEM_attribute(priorityMap, attr, alsoUniverse);
+    }
   }
   
 	if (repaired) {
@@ -1059,6 +1012,41 @@ bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const
   if (repaired)
     state = REPAIRED;
 	return repaired;
+}
+
+
+bool PlanarPartition::getPriorityList(const std::string &file, std::map<std::string, unsigned int> &priorityMap, std::string &att) {
+  //-- 1. Fetch the priority list in the file
+  std::ifstream priofile(file.c_str(), std::ifstream::in);
+  if (!priofile)
+  {
+    std::cout << "Priority file could not be opened." << std::endl;
+    return false;
+  }
+  //-- 2. type of edge-matching: 1st line either "datasets" OR "an_attribute"
+  std::getline(priofile, att);
+  if (att != "datasets") {
+    //-- each polygon must have the attribute used for repair, otherwise abort repair
+    for (std::vector<OGRFeatureDefn*>::const_iterator it = allFeatureDefns.begin();
+         it != allFeatureDefns.end();
+         it++) {
+      if ( (*it)->GetFieldIndex(att.c_str()) == -1) {
+        std::cout << "File " << (*it)->GetName() << " doesn't have the attribute " << att << std::endl;
+        return false;
+      }
+    }
+  }
+  unsigned int c = 0;
+  while (!priofile.eof()) {
+    std::string value;
+    std::getline(priofile, value);
+    if (value != "") {
+      priorityMap[value] = c;
+      c++;
+    }
+  }
+  priofile.close();
+  return true;
 }
 
 bool PlanarPartition::repairLB(bool alsoUniverse) {
@@ -1420,7 +1408,6 @@ bool PlanarPartition::exportPolygonsSHP(std::string &folder) {
       return false;
     }
     std::string tmp = (*it)->GetName();
-//    std::string outname = "/Users/hugo/temp/" + tmp + "-out.shp";  //-- TODO: output to a chosen folder?
     std::string outname = folder + "/" + tmp + ".r.shp";
     OGRDataSource *dataSource = driver->Open(outname.c_str(), false);
     if (dataSource != NULL) {
@@ -1438,6 +1425,7 @@ bool PlanarPartition::exportPolygonsSHP(std::string &folder) {
       return false;
     }
     allshps[*it] = dataSource;
+    // TODO : deal with CRS
     //	OGRLayer *layer = dataSource->CreateLayer("polygons", spatialReference, wkbPolygon, NULL);
     OGRLayer *layer = dataSource->CreateLayer("polygons", NULL, wkbPolygon, NULL);
     if (layer == NULL) {
