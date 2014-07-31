@@ -22,6 +22,27 @@
 #include "PlanarPartition.h"
 #include <tclap/CmdLine.h>
 
+class MyOutput : public TCLAP::StdOutput
+{
+public:
+  
+  virtual void usage(TCLAP::CmdLineInterface& c)
+  {
+    std::cout << "===== pprepair =====" << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::list<TCLAP::Arg*> args = c.getArgList();
+    for (TCLAP::ArgListIterator it = args.begin(); it != args.end(); it++) {
+//      std::cout << "\t-" << (*it)->getFlag()  << "\t" << (*it)->getName() << "\t\t" << (*it)->getDescription() << std::endl;
+//      std::cout << "\t--" << (*it)->getName() << std::setw(20) << "\t[" << (*it)->getFlag() << "]\t\t" << (*it)->getDescription() << std::endl;
+//      std::cout << (*it)->getValue() << "  [" << (*it)->getDescription() << "]" << std::endl;
+      std::cout << "\t--" << (*it)->getName() <<  "[" << (*it)->getFlag() << "]\t\t" << (*it)->getDescription() << std::endl;
+    }
+    std::cout << "Examples:" << std::endl;
+    std::cout << "\t./pprepair -i file1.shp -i file2.geojson -o /home/temp/ -r fix" << std::endl;
+    std::cout << "\t./pprepair -i file1.shp -o /home/temp/ -r EM --priority prio.txt" << std::endl;
+  }
+};
+
 
 int main (int argc, char* const argv[]) {
   
@@ -34,6 +55,8 @@ int main (int argc, char* const argv[]) {
   TCLAP::ValuesConstraint<std::string> rmVals(repairMethods);
 
   TCLAP::CmdLine cmd("Allowed options", ' ', "");
+  MyOutput my;
+  cmd.setOutput(&my);
   try {
     TCLAP::MultiArg<std::string> inputDSs       ("i", "input", "input OGR dataset (this can be used more than once)", true, "string");
     TCLAP::ValueArg<std::string> extent         ("e", "extent", "spatial extent", false, "", "string");
@@ -44,13 +67,13 @@ int main (int argc, char* const argv[]) {
     TCLAP::ValueArg<std::string> outerrors      ("",  "outerrors", "errors to a shapefile", false, "","string");
     TCLAP::ValueArg<std::string> outtr          ("",  "outtr", "output triangulation to a shapefile", false, "","string");
 
-    cmd.add(inputDSs);
-    cmd.add(extent);
-    cmd.add(outfiles);
     cmd.add(outerrors);
     cmd.add(outtr);
+    cmd.add(extent);
     cmd.add(priority);
-    cmd.xorAdd(repair, validation);
+    cmd.xorAdd(validation, repair);
+    cmd.add(outfiles);
+    cmd.add(inputDSs);
     cmd.parse( argc, argv );
     
     //-- add input datasets to PP
