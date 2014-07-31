@@ -34,7 +34,7 @@ PolygonHandle::~PolygonHandle() {
   // TODO: clear OGR memory?
 }
 
-std::string PolygonHandle::getValueAttributeAsString(std::string attr) {
+std::string PolygonHandle::getValueAttributeAsString(std::string &attr) {
   int i = feature->GetFieldIndex(attr.c_str());
   if (i == -1)
     return "";

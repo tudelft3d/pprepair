@@ -242,6 +242,9 @@ bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> 
 	int numberOfLayers = dataSource->GetLayerCount();
   for (int currentLayer = 0; currentLayer < numberOfLayers; currentLayer++) {
     OGRLayer *dataLayer = dataSource->GetLayer(currentLayer);
+    OGREnvelope bbox;
+    dataLayer->GetExtent(&bbox);
+    std::cout << "minx: " << bbox.MinX << std::endl;
     dataLayer->ResetReading();
     unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
     std::cout << "\tReading layer #" << currentLayer+1 << " (" << numberOfPolygons << " polygons)" << std::endl;
@@ -1004,6 +1007,8 @@ bool PlanarPartition::repairRN(bool alsoUniverse) {
 	return repaired;
 }
 
+
+// TODO: tie cases?
 bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const std::string &priority) {
 	if (state < TAGGED) {
 		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;

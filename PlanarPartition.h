@@ -60,6 +60,7 @@ private:
   PolygonHandle universetag;
   PolygonHandle extenttag;
   bool hasExtent;
+  OGREnvelope _bbox;
   Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
 
   std::vector<OGRFeatureDefn*> allFeatureDefns; //-- all the FeatureDefn of all the input datasets
