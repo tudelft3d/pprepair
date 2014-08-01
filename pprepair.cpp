@@ -37,8 +37,6 @@ public:
       else
         std::cout << "\t-" << (*it)->getFlag() << ", --" << (*it)->getName() << std::endl;
       std::cout << "\t\t" << (*it)->getDescription() << std::endl;
-//      std::cout << "\t\t" << (*it)->shortID() << std::endl;
-//      std::cout << "\t\t" << (*it)->longID() << std::endl;
     }
     std::cout << "EXAMPLES" << std::endl;
     std::cout << "\tpprepair -i file1.shp -i file2.geojson -o /home/elvis/temp/ -r fix" << std::endl;
