@@ -29,17 +29,26 @@ public:
   virtual void usage(TCLAP::CmdLineInterface& c)
   {
     std::cout << "===== pprepair =====" << std::endl;
-    std::cout << "Options:" << std::endl;
+    std::cout << "OPTIONS" << std::endl;
     std::list<TCLAP::Arg*> args = c.getArgList();
     for (TCLAP::ArgListIterator it = args.begin(); it != args.end(); it++) {
-//      std::cout << "\t-" << (*it)->getFlag()  << "\t" << (*it)->getName() << "\t\t" << (*it)->getDescription() << std::endl;
-//      std::cout << "\t--" << (*it)->getName() << std::setw(20) << "\t[" << (*it)->getFlag() << "]\t\t" << (*it)->getDescription() << std::endl;
-//      std::cout << (*it)->getValue() << "  [" << (*it)->getDescription() << "]" << std::endl;
-      std::cout << "\t--" << (*it)->getName() <<  "[" << (*it)->getFlag() << "]\t\t" << (*it)->getDescription() << std::endl;
+      if ((*it)->getFlag() == "")
+        std::cout << "\t--" << (*it)->getName() << std::endl;
+      else
+        std::cout << "\t-" << (*it)->getFlag() << ", --" << (*it)->getName() << std::endl;
+      std::cout << "\t\t" << (*it)->getDescription() << std::endl;
+//      std::cout << "\t\t" << (*it)->shortID() << std::endl;
+//      std::cout << "\t\t" << (*it)->longID() << std::endl;
     }
-    std::cout << "Examples:" << std::endl;
-    std::cout << "\t./pprepair -i file1.shp -i file2.geojson -o /home/temp/ -r fix" << std::endl;
-    std::cout << "\t./pprepair -i file1.shp -o /home/temp/ -r EM --priority prio.txt" << std::endl;
+    std::cout << "EXAMPLES" << std::endl;
+    std::cout << "\tpprepair -i file1.shp -i file2.geojson -o /home/elvis/temp/ -r fix" << std::endl;
+    std::cout << "\t\tTakes 2 input files, repairs them with RandomNeighbour rule and outputs repaired shapefiles to /home/elvis/temp/ folder" << std::endl << std::endl;
+    std::cout << "\tpprepair -i file1.shp -i file2.geojson --outerrors out.shp -v" << std::endl;
+    std::cout << "\t\tTakes 2 input files, validates them and output a shapefile with errors" << std::endl << std::endl;
+    std::cout << "\tpprepair -i file1.shp -o /home/elvis/temp/ -r PL --priority prio.txt" << std::endl;
+    std::cout << "\t\tTakes 1 input file, repairs it with PriorityList rule and outputs the repaired shapefile to /home/elvis/temp/ folder" << std::endl << std::endl;
+    std::cout << "\tpprepair -i file1.shp -e extent.geojson -o . -r LB" << std::endl;
+    std::cout << "\t\tTakes 1 input file and a spatial extent file, repairs file1.shp for holes and gaps + aligns to the extent. Result shapefile saved to current folder" << std::endl << std::endl;
   }
 };
 
@@ -58,14 +67,14 @@ int main (int argc, char* const argv[]) {
   MyOutput my;
   cmd.setOutput(&my);
   try {
-    TCLAP::MultiArg<std::string> inputDSs       ("i", "input", "input OGR dataset (this can be used more than once)", true, "string");
-    TCLAP::ValueArg<std::string> extent         ("e", "extent", "spatial extent", false, "", "string");
-    TCLAP::ValueArg<std::string> outfiles       ("o", "output", "folder for repaired file(s) (SHP only)", false, "","string");
-    TCLAP::ValueArg<std::string> repair         ("r", "repair", "repair method used: RN/LB/PL/EM", false, "", &rmVals);
+    TCLAP::MultiArg<std::string> inputDSs       ("i", "input", "input OGR dataset (this can be used multiple times)", true, "string");
+    TCLAP::ValueArg<std::string> extent         ("e", "extent", "spatial extent (OGR dataset containing *one* polygon)", false, "", "string");
+    TCLAP::ValueArg<std::string> outfiles       ("o", "output", "folder for repaired shapefile(s))", false, "","string");
+    TCLAP::ValueArg<std::string> repair         ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
     TCLAP::SwitchArg             validation     ("v", "validation", "validation only (gaps and overlaps reported)", false);
-    TCLAP::ValueArg<std::string> priority       ("",  "priority", "priority list for repairing", false, "", "string");
-    TCLAP::ValueArg<std::string> outerrors      ("",  "outerrors", "errors to a shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> outtr          ("",  "outtr", "output triangulation to a shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> priority       ("p", "priority", "priority list for repairing (methods <PL|EM>)", false, "", "string");
+    TCLAP::ValueArg<std::string> outerrors      ("",  "outerrors", "output errors to shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outtr          ("",  "outtr", "output triangulation to shapefile", false, "","string");
 
     cmd.add(outerrors);
     cmd.add(outtr);
