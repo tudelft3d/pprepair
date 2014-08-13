@@ -155,7 +155,8 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
         polygonsVector.push_back(Polygon(oring, irings.begin(), irings.end()));
         break;
       }
-      case wkbMultiPolygon: {
+      case wkbMultiPolygon:
+      case wkbMultiPolygon25D: {
         OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*f)->GetGeometryRef());
         // Check each polygon
         for (int currentPolygon = 0; currentPolygon < geometry->getNumGeometries(); currentPolygon++) {
@@ -177,7 +178,7 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
             }
           }
           // TODO: fix here for multipolygon
-          Ring oring(outerRingsList[0].begin(), outerRingsList[0].begin());
+          Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
           outerRingsList.clear();
           std::vector<Ring> irings;
           for (unsigned int currentRing = 0; currentRing < innerRingsList.size(); currentRing++) {
