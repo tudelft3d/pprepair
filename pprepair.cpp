@@ -40,13 +40,18 @@ public:
     }
     std::cout << "EXAMPLES" << std::endl;
     std::cout << "\tpprepair -i file1.shp -i file2.geojson -o /home/elvis/temp/ -r fix" << std::endl;
-    std::cout << "\t\tTakes 2 input files, repairs them with RandomNeighbour rule and outputs repaired shapefiles to /home/elvis/temp/ folder" << std::endl << std::endl;
+    std::cout << "\t\tTakes 2 input files, repairs them with RandomNeighbour rule" << std::endl;
+    std::cout << "\t\tand outputs repaired shapefiles to /home/elvis/temp/ folder" << std::endl << std::endl;
     std::cout << "\tpprepair -i file1.shp -i file2.geojson --outerrors out.shp -v" << std::endl;
-    std::cout << "\t\tTakes 2 input files, validates them and output a shapefile with errors" << std::endl << std::endl;
+    std::cout << "\t\tTakes 2 input files, validates them" << std::endl;
+    std::cout << "\t\tand output a shapefile with errors" << std::endl << std::endl;
     std::cout << "\tpprepair -i file1.shp -o /home/elvis/temp/ -r PL --priority prio.txt" << std::endl;
-    std::cout << "\t\tTakes 1 input file, repairs it with PriorityList rule and outputs the repaired shapefile to /home/elvis/temp/ folder" << std::endl << std::endl;
+    std::cout << "\t\tTakes 1 input file, repairs it with PriorityList rule" << std::endl;
+    std::cout << "\t\tand outputs the repaired shapefile to /home/elvis/temp/ folder" << std::endl << std::endl;
     std::cout << "\tpprepair -i file1.shp -e extent.geojson -o . -r LB" << std::endl;
-    std::cout << "\t\tTakes 1 input file and a spatial extent file, repairs file1.shp for holes and gaps + aligns to the extent. Result shapefile saved to current folder" << std::endl << std::endl;
+    std::cout << "\t\tTakes 1 input file and a spatial extent file," << std::endl; 
+    std::cout << "\t\trepairs file1.shp for holes and gaps + aligns to the extent." << std::endl; 
+    std::cout << "\t\tResult shapefile saved to current folder" << std::endl << std::endl;
   }
 };
 
