@@ -77,6 +77,7 @@ private:
                        bool alsoUniverse = true); //-- Edge-Matching prio based on DataSet order
 
   
+  void findRegions(unsigned int &nogaps, unsigned int &nooverlaps);
   bool getPriorityList(const std::string &priofile, std::map<std::string, unsigned int> &priorityMap, std::string &attr);
   bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures);

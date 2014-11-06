@@ -1558,26 +1558,89 @@ bool PlanarPartition::exportTriangulation(std::string &file) {
 }
 
 
+void PlanarPartition::findRegions(unsigned int &noholes, unsigned int &nooverlaps) {
+  // Use a temporary vector to make it deterministic and order independent
+  std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
+  std::set<Triangulation::Face_handle> processedFaces;
+  for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
+    if (!currentFace->info().hasOneTag() && !processedFaces.count(currentFace)) {
+      // Expand this triangle into a complete region
+      std::set<Triangulation::Face_handle> facesInRegion;
+      facesInRegion.insert(currentFace);
+      std::stack<Triangulation::Face_handle> facesToProcess;
+      facesToProcess.push(currentFace);
+      while (facesToProcess.size() > 0) {
+        Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
+        facesToProcess.pop();
+        processedFaces.insert(currentFaceInStack);
+        if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
+            !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
+          facesInRegion.insert(currentFaceInStack->neighbor(0));
+          facesToProcess.push(currentFaceInStack->neighbor(0));
+        } if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
+          facesInRegion.insert(currentFaceInStack->neighbor(1));
+          facesToProcess.push(currentFaceInStack->neighbor(1));
+        } if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
+          facesInRegion.insert(currentFaceInStack->neighbor(2));
+          facesToProcess.push(currentFaceInStack->neighbor(2));
+        }
+      }
+      if (currentFace->info().numberOfTags() == 0)
+        noholes += 1;
+      else
+        nooverlaps += 1;
+    }
+  }
+}
+
 void PlanarPartition::printInfo(std::ostream &ostr) {
 // TODO: change so that it prints for regions not triangles?
-  std::cout << "*** Triangulation ***" << std::endl;
-  std::cout << "\tVertices: " << triangulation.number_of_vertices() << std::endl;
-	std::cout << "\tEdges: " << triangulation.tds().number_of_edges() << std::endl;
-	std::cout << "\tTriangles: " << triangulation.number_of_faces() << std::endl;
-
+  
 	// Number of tags
-	unsigned int untagged = 0, onetag = 0, multipletags = 0, total;
-	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
-		if ((*currentFace).info().hasNoTags()) untagged++;
-		else if ((*currentFace).info().hasOneTag()) onetag++;
-		else multipletags++;
+  unsigned int untagged = 0;
+  unsigned int onetag = 0;
+  unsigned int multipletags = 0;
+  unsigned int total;
+  double auntagged = 0;
+  double aonetag = 0;
+  double amultipletags = 0;
+  double atotal;
+	for (Triangulation::Finite_faces_iterator curF = triangulation.finite_faces_begin(); curF != triangulation.finite_faces_end(); ++curF) {
+    if ((*curF).info().hasNoTags()) {
+      untagged++;
+      auntagged += CGAL::to_double(triangulation.triangle(curF).area());
+    }
+    else if ((*curF).info().hasOneTag()) {
+      onetag++;
+      aonetag += CGAL::to_double(triangulation.triangle(curF).area());
+    }
+    else {
+      multipletags++;
+      amultipletags += CGAL::to_double(triangulation.triangle(curF).area());
+    }
 	}
+  
+  unsigned int noholes = 0;
+  unsigned int nooverlaps = 0;
+  findRegions(noholes, nooverlaps);
+  atotal = aonetag + amultipletags + auntagged;
+  ostr << "*** Regions ***" << std::endl <<
+  "\tHoles:    " << noholes     << " polygon(s) (" << 100.0*auntagged/atotal    << "% of area)" << std::endl <<
+  "\tOverlaps: " << nooverlaps << " polygon(s) (" << 100.0*amultipletags/atotal << "% of area)" << std::endl;
+
+  ostr << "*** Triangulation ***" << std::endl <<
+  "\tVertices: " << triangulation.number_of_vertices() << std::endl <<
+  "\tEdges: " << triangulation.tds().number_of_edges() << std::endl <<
+  "\tTriangles: " << triangulation.number_of_faces() << std::endl;
   total = onetag + multipletags + untagged;
-  ostr << "\tHoles:    " << untagged << " triangles (" << 100.0*untagged/total << " %)" << std::endl <<
-  "\tOk:       " << onetag << " triangles (" << 100.0*onetag/total << " %)" << std::endl <<
-  "\tOverlaps: " << multipletags << " triangles (" << 100.0*multipletags/total << " %)" << std::endl;
+  ostr << "\tOk:       " << onetag << " triangles" << std::endl <<
+  "\tHoles:    " << untagged << " triangles" << std::endl <<
+  "\tOverlaps: " << multipletags << " triangles " << std::endl;
   std::cout << "*********************" << std::endl;
 }
+
 
 void PlanarPartition::removeVertices() {
   // Remove unnecessary vertices completely surrounded by the same polygon
