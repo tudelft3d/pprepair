@@ -1587,10 +1587,19 @@ void PlanarPartition::findRegions(unsigned int &noholes, unsigned int &nooverlap
           facesToProcess.push(currentFaceInStack->neighbor(2));
         }
       }
-      if (currentFace->info().numberOfTags() == 0)
+      //-- is it a sliver acc. to ELF? thinness
+      double rarea = 0.0;
+      for (std::set<Triangulation::Face_handle>::iterator curF = facesInRegion.begin(); curF != facesInRegion.end(); ++curF) {
+        rarea += CGAL::to_double(triangulation.triangle(*curF).area());
+      }
+      if (currentFace->info().numberOfTags() == 0) {
         noholes += 1;
-      else
+        std::cout << "One hole:    " << rarea << std::endl;
+      }
+      else {
         nooverlaps += 1;
+        std::cout << "One overlap: " << rarea << std::endl;
+      }
     }
   }
 }
