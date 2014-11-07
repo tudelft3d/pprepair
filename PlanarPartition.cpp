@@ -1562,6 +1562,7 @@ void PlanarPartition::findRegions(unsigned int &noholes, unsigned int &nooverlap
   // Use a temporary vector to make it deterministic and order independent
   std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
   std::set<Triangulation::Face_handle> processedFaces;
+  std::vector<OGRGeometry*> problemareas;
   for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
     if (!currentFace->info().hasOneTag() && !processedFaces.count(currentFace)) {
       // Expand this triangle into a complete region
@@ -1600,8 +1601,29 @@ void PlanarPartition::findRegions(unsigned int &noholes, unsigned int &nooverlap
         nooverlaps += 1;
         std::cout << "One overlap: " << rarea << std::endl;
       }
+      //-- create a OGRPolygon
+      OGRMultiPolygon themultipoly;
+      OGRPolygon polygon;
+      OGRLinearRing oring;
+      for (std::set<Triangulation::Face_handle>::iterator curF = facesInRegion.begin(); curF != facesInRegion.end(); ++curF) {
+        oring.addPoint(CGAL::to_double((*curF)->vertex(0)->point().x()), CGAL::to_double((*curF)->vertex(0)-> point().y()));
+        oring.addPoint(CGAL::to_double((*curF)->vertex(1)->point().x()), CGAL::to_double((*curF)->vertex(1)-> point().y()));
+        oring.addPoint(CGAL::to_double((*curF)->vertex(2)->point().x()), CGAL::to_double((*curF)->vertex(2)-> point().y()));
+        oring.addPoint(CGAL::to_double((*curF)->vertex(0)->point().x()), CGAL::to_double((*curF)->vertex(0)-> point().y()));
+        polygon.addRing(&oring);
+        themultipoly.addGeometryDirectly(polygon.clone());
+        polygon.empty();
+        oring.empty();
+      }
+      OGRGeometry* u;
+      u = themultipoly.UnionCascaded();
+      OGRPolygon *tmp = static_cast<OGRPolygon *>(u);
+      std::cout << "Perimeter: " << tmp->getExteriorRing()->get_Length() << std::endl;
+//      std::cout << u->exportToJson() << std::endl;
+      problemareas.push_back(u->clone());
     }
   }
+  std::cout << problemareas.size() << std::endl;
 }
 
 void PlanarPartition::printInfo(std::ostream &ostr) {
