@@ -42,7 +42,8 @@ public:
   bool exportPolygonsSHP(std::string &folder);
   bool exportTriangulation(std::string &outfile);
   
-  void printInfo(std::ostream &ostr = std::cout);
+  void printTriangulationInfo(std::ostream &ostr = std::cout);
+  void reportProblemRegions(std::ostream &ostr = std::cout, double thinness = -1.0, double minSliverArea = -1.0);
   int  noPolygons();
 
   bool makeAllHolesValid();
@@ -77,7 +78,7 @@ private:
                        bool alsoUniverse = true); //-- Edge-Matching prio based on DataSet order
 
   
-  void findRegions(unsigned int &nogaps, unsigned int &nooverlaps);
+  void getProblemRegionsAsOGR(std::vector<OGRGeometry*> &holes, std::vector<OGRGeometry*> &overlaps);
   bool getPriorityList(const std::string &priofile, std::map<std::string, unsigned int> &priorityMap, std::string &attr);
   bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures);

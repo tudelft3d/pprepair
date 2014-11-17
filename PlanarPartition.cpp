@@ -1558,11 +1558,10 @@ bool PlanarPartition::exportTriangulation(std::string &file) {
 }
 
 
-void PlanarPartition::findRegions(unsigned int &noholes, unsigned int &nooverlaps) {
-  // Use a temporary vector to make it deterministic and order independent
+void PlanarPartition::getProblemRegionsAsOGR(std::vector<OGRGeometry*> &holes, std::vector<OGRGeometry*> &overlaps)
+{
   std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
   std::set<Triangulation::Face_handle> processedFaces;
-  std::vector<OGRGeometry*> problemareas;
   for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
     if (!currentFace->info().hasOneTag() && !processedFaces.count(currentFace)) {
       // Expand this triangle into a complete region
@@ -1588,21 +1587,8 @@ void PlanarPartition::findRegions(unsigned int &noholes, unsigned int &nooverlap
           facesToProcess.push(currentFaceInStack->neighbor(2));
         }
       }
-      //-- is it a sliver acc. to ELF? thinness
-      double rarea = 0.0;
-      for (std::set<Triangulation::Face_handle>::iterator curF = facesInRegion.begin(); curF != facesInRegion.end(); ++curF) {
-        rarea += CGAL::to_double(triangulation.triangle(*curF).area());
-      }
-      if (currentFace->info().numberOfTags() == 0) {
-        noholes += 1;
-        std::cout << "One hole:    " << rarea << std::endl;
-      }
-      else {
-        nooverlaps += 1;
-        std::cout << "One overlap: " << rarea << std::endl;
-      }
-      //-- create a OGRPolygon
-      OGRMultiPolygon themultipoly;
+      //-- construct OGR polygon
+      OGRMultiPolygon settriangles;
       OGRPolygon polygon;
       OGRLinearRing oring;
       for (std::set<Triangulation::Face_handle>::iterator curF = facesInRegion.begin(); curF != facesInRegion.end(); ++curF) {
@@ -1611,65 +1597,95 @@ void PlanarPartition::findRegions(unsigned int &noholes, unsigned int &nooverlap
         oring.addPoint(CGAL::to_double((*curF)->vertex(2)->point().x()), CGAL::to_double((*curF)->vertex(2)-> point().y()));
         oring.addPoint(CGAL::to_double((*curF)->vertex(0)->point().x()), CGAL::to_double((*curF)->vertex(0)-> point().y()));
         polygon.addRing(&oring);
-        themultipoly.addGeometryDirectly(polygon.clone());
+        settriangles.addGeometryDirectly(polygon.clone());
         polygon.empty();
         oring.empty();
       }
       OGRGeometry* u;
-      u = themultipoly.UnionCascaded();
-      OGRPolygon *tmp = static_cast<OGRPolygon *>(u);
-      std::cout << "Perimeter: " << tmp->getExteriorRing()->get_Length() << std::endl;
-//      std::cout << u->exportToJson() << std::endl;
-      problemareas.push_back(u->clone());
+      u = settriangles.UnionCascaded();
+      if (currentFace->info().numberOfTags() == 0)
+        holes.push_back(u->clone());
+      else
+        overlaps.push_back(u->clone());
     }
   }
-  std::cout << problemareas.size() << std::endl;
 }
 
-void PlanarPartition::printInfo(std::ostream &ostr) {
-// TODO: change so that it prints for regions not triangles?
-  
-	// Number of tags
-  unsigned int untagged = 0;
-  unsigned int onetag = 0;
-  unsigned int multipletags = 0;
+
+
+void PlanarPartition::printTriangulationInfo(std::ostream &ostr) {
+  unsigned int tag0 = 0;
+  unsigned int tag1 = 0;
+  unsigned int tag2 = 0;
   unsigned int total;
-  double auntagged = 0;
-  double aonetag = 0;
-  double amultipletags = 0;
-  double atotal;
-	for (Triangulation::Finite_faces_iterator curF = triangulation.finite_faces_begin(); curF != triangulation.finite_faces_end(); ++curF) {
+  double tag0_a = 0; //-- areas
+  double tag1_a = 0;
+  double tag2_a = 0;
+  for (Triangulation::Finite_faces_iterator curF = triangulation.finite_faces_begin(); curF != triangulation.finite_faces_end(); ++curF) {
     if ((*curF).info().hasNoTags()) {
-      untagged++;
-      auntagged += CGAL::to_double(triangulation.triangle(curF).area());
+      tag0++;
+      tag0_a += CGAL::to_double(triangulation.triangle(curF).area());
     }
     else if ((*curF).info().hasOneTag()) {
-      onetag++;
-      aonetag += CGAL::to_double(triangulation.triangle(curF).area());
+      tag1++;
+      tag1_a += CGAL::to_double(triangulation.triangle(curF).area());
     }
     else {
-      multipletags++;
-      amultipletags += CGAL::to_double(triangulation.triangle(curF).area());
+      tag2++;
+      tag2_a += CGAL::to_double(triangulation.triangle(curF).area());
     }
-	}
+  }
   
-  unsigned int noholes = 0;
-  unsigned int nooverlaps = 0;
-  findRegions(noholes, nooverlaps);
-  atotal = aonetag + amultipletags + auntagged;
-  ostr << "*** Regions ***" << std::endl <<
-  "\tHoles:    " << noholes     << " polygon(s) (" << 100.0*auntagged/atotal    << "% of area)" << std::endl <<
-  "\tOverlaps: " << nooverlaps << " polygon(s) (" << 100.0*amultipletags/atotal << "% of area)" << std::endl;
-
   ostr << "*** Triangulation ***" << std::endl <<
   "\tVertices: " << triangulation.number_of_vertices() << std::endl <<
   "\tEdges: " << triangulation.tds().number_of_edges() << std::endl <<
   "\tTriangles: " << triangulation.number_of_faces() << std::endl;
-  total = onetag + multipletags + untagged;
-  ostr << "\tOk:       " << onetag << " triangles" << std::endl <<
-  "\tHoles:    " << untagged << " triangles" << std::endl <<
-  "\tOverlaps: " << multipletags << " triangles " << std::endl;
-  std::cout << "*********************" << std::endl;
+  total = tag0 + tag1 + tag2;
+  ostr << "\tOk:       " << tag1 << " triangles" << std::endl <<
+  "\tOverlaps: "         << tag2 << " triangles" << std::endl <<
+  "\tHoles:    "         << tag0 << " triangles" << std::endl;
+//  std::cout << "*********************" << std::endl;  
+}
+
+
+void PlanarPartition::reportProblemRegions(std::ostream &ostr, double thinness, double minSliverArea) {
+  std::vector<OGRGeometry*> holes;
+  std::vector<OGRGeometry*> overlaps;
+  getProblemRegionsAsOGR(holes, overlaps);
+  
+  ostr << "*** Regions ***" << std::endl;
+  
+  //-- overlaps
+  ostr << "\tOverlaps: " << overlaps.size()  << " regions(s)." << std::endl;
+  for (std::vector<OGRGeometry*>::iterator g = overlaps.begin() ; g != overlaps.end(); g++) {
+    OGRPolygon *tmp = static_cast<OGRPolygon*>(*g);
+    std::cout << "\t\t- " << tmp->get_Area() << " unit^2" << std::endl;
+  }
+  
+  //-- holes
+  if (thinness < 0.0) {
+    ostr << "\tHoles: " << holes.size()  << " regions(s)." << std::endl;
+    for (std::vector<OGRGeometry*>::iterator g = holes.begin() ; g != holes.end(); g++) {
+      OGRPolygon *tmp = static_cast<OGRPolygon*>(*g);
+      std::cout << "\t\t- " << tmp->get_Area() << " unit^2" << std::endl;
+    }
+  }
+  else {
+    std::vector<OGRGeometry*> slivers;
+    for (std::vector<OGRGeometry*>::iterator g = holes.begin() ; g != holes.end(); g++) {
+      OGRPolygon *tmp = static_cast<OGRPolygon*>(*g);
+      //-- use the magic formula from ELF project
+      double thinness = 4 * CGAL_PI * tmp->get_Area() / pow(tmp->getExteriorRing()->get_Length(), 2);
+      if ( (thinness < 0.30) && (tmp->get_Area() < minSliverArea) ) {
+        slivers.push_back(*g);
+      }
+    }
+    ostr << "\tHoles (valid slivers): " << slivers.size()  << " regions(s)." << std::endl;
+    for (std::vector<OGRGeometry*>::iterator g = slivers.begin() ; g != slivers.end(); g++) {
+      OGRPolygon *tmp = static_cast<OGRPolygon*>(*g);
+      std::cout << "\t\t- " << tmp->get_Area() << " unit^2" << std::endl;
+    }
+  }
 }
 
 

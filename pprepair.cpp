@@ -109,14 +109,16 @@ int main (int argc, char* const argv[]) {
     if (validation.getValue() == true) {
       if (pp.isValid() == false) {
         std::cout << "\nValidation:\n\t planar partition is NOT valid." << std::endl;
-        pp.printInfo();
+        pp.printTriangulationInfo();
+//        pp.reportProblemRegions(std::cout);
+        pp.reportProblemRegions(std::cout, 0.3, 500);
       }
       else {
         std::cout << "\nValidation:\n\t planar partition is valid." << std::endl;
       }
     }
     else { //-- repairing
-      pp.printInfo();
+      pp.printTriangulationInfo();
       
       if ( (repair.getValue() == "PL") || (repair.getValue() == "EM") ){
         if (priority.getValue() == "") {
@@ -137,7 +139,7 @@ int main (int argc, char* const argv[]) {
         std::cout << "Reparing 'ties'..." << std::endl;
         pp.repair("RN");
       }
-      pp.printInfo();
+      pp.printTriangulationInfo();
       
       //-- output repaired SHP files
       if (outfiles.getValue() != "") {
