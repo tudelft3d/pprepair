@@ -43,7 +43,9 @@ public:
   bool exportTriangulation(std::string &outfile);
   
   void printTriangulationInfo(std::ostream &ostr = std::cout);
+  void printProblemRegions(std::ostream &ostr = std::cout);
   void reportProblemRegions(std::ostream &ostr = std::cout, double thinness = -1.0, double minSliverArea = -1.0);
+  bool exportProblemRegionsAsSHP(std::string &file, double thinness = -1.0, double minSliverArea = -1.0);
   int  noPolygons();
 
   bool makeAllHolesValid();

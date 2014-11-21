@@ -1533,11 +1533,6 @@ bool PlanarPartition::exportTriangulation(std::string &file) {
 		OGRPolygon polygon;
 		polygon.addRing(&ring);
 		OGRFeature *feature = OGRFeature::CreateFeature(layer->GetLayerDefn());
-//    if ((*currentFace).info().getTags() == NULL)
-//      feature->SetField("Tags", 0);
-//    else
-//      feature->SetField("Tags", (int)(*currentFace).info().numberOfTags());
-    // Put number of tags, the universe doesn't count
     if ((*currentFace).info().getTags() == NULL) {
       feature->SetField("Tags", 0);
     }
@@ -1550,7 +1545,6 @@ bool PlanarPartition::exportTriangulation(std::string &file) {
   	feature->SetGeometry(&polygon);
 		if (layer->CreateFeature(feature) != OGRERR_NONE)
       std::cout << "Could not create feature." << std::endl;
-		// Free OGR feature
 		OGRFeature::DestroyFeature(feature);
 	}
 	OGRDataSource::DestroyDataSource(dataSource);
@@ -1612,6 +1606,47 @@ void PlanarPartition::getProblemRegionsAsOGR(std::vector<OGRGeometry*> &holes, s
 }
 
 
+void PlanarPartition::printProblemRegions(std::ostream &ostr) {
+  std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
+  std::set<Triangulation::Face_handle> processedFaces;
+  unsigned int holes = 0;
+  unsigned int overlaps = 0;
+  for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
+    if (!currentFace->info().hasOneTag() && !processedFaces.count(currentFace)) {
+      // Expand this triangle into a complete region
+      std::set<Triangulation::Face_handle> facesInRegion;
+      facesInRegion.insert(currentFace);
+      std::stack<Triangulation::Face_handle> facesToProcess;
+      facesToProcess.push(currentFace);
+      while (facesToProcess.size() > 0) {
+        Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
+        facesToProcess.pop();
+        processedFaces.insert(currentFaceInStack);
+        if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
+            !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
+          facesInRegion.insert(currentFaceInStack->neighbor(0));
+          facesToProcess.push(currentFaceInStack->neighbor(0));
+        } if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
+          facesInRegion.insert(currentFaceInStack->neighbor(1));
+          facesToProcess.push(currentFaceInStack->neighbor(1));
+        } if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
+          facesInRegion.insert(currentFaceInStack->neighbor(2));
+          facesToProcess.push(currentFaceInStack->neighbor(2));
+        }
+      }
+      if (currentFace->info().numberOfTags() == 0)
+        holes++;
+      else
+        overlaps++;
+    }
+  }
+  ostr << "*** Problematic Regions ***" << std::endl <<
+  "\tOverlaps: "         << overlaps << " regions" << std::endl <<
+  "\tHoles:    "         << holes << " regions" << std::endl;
+}
+
 
 void PlanarPartition::printTriangulationInfo(std::ostream &ostr) {
   unsigned int tag0 = 0;
@@ -1652,9 +1687,7 @@ void PlanarPartition::reportProblemRegions(std::ostream &ostr, double thinness, 
   std::vector<OGRGeometry*> holes;
   std::vector<OGRGeometry*> overlaps;
   getProblemRegionsAsOGR(holes, overlaps);
-  
   ostr << "*** Regions ***" << std::endl;
-  
   //-- overlaps
   ostr << "\tOverlaps: " << overlaps.size()  << " regions(s)." << std::endl;
   for (std::vector<OGRGeometry*>::iterator g = overlaps.begin() ; g != overlaps.end(); g++) {
@@ -1688,6 +1721,92 @@ void PlanarPartition::reportProblemRegions(std::ostream &ostr, double thinness, 
   }
 }
 
+
+bool PlanarPartition::exportProblemRegionsAsSHP(std::string &file, double thinness, double minSliverArea) {
+  std::cout << "Exporting problematic regions as a SHP..." << std::endl;
+  std::vector<OGRGeometry*> holes;
+  std::vector<OGRGeometry*> overlaps;
+  getProblemRegionsAsOGR(holes, overlaps);
+  
+  const char *driverName = "ESRI Shapefile";
+  OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
+  if (driver == NULL) {
+    std::cout << "Driver not found." << std::endl;
+    return false;
+  }
+  OGRDataSource *dataSource = driver->Open(file.c_str(), false);
+  if (dataSource != NULL) {
+    std::cout << "Erasing current file..." << std::endl;
+    if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
+      std::cout << "Couldn't erase current file." << std::endl;
+      return false;
+    }
+    OGRDataSource::DestroyDataSource(dataSource);
+  }
+  std::cout << "Writing file " << file << "..." << std::endl;
+  dataSource = driver->CreateDataSource(file.c_str(), NULL);
+  if (dataSource == NULL) {
+    std::cout << "Could not create file." << std::endl;
+    return false;
+  }
+  OGRLayer *layer = dataSource->CreateLayer("triangles", NULL, wkbPolygon, NULL);
+  if (layer == NULL) {
+    std::cout << "Could not create layer." << std::endl;
+    return false;
+  }
+  OGRFieldDefn numberOfTagsField("Tags", OFTInteger);
+  if (layer->CreateField(&numberOfTagsField) != OGRERR_NONE) {
+    std::cout << "Could not create field Tags." << std::endl;
+    return false;
+  }
+  //-- overlaps
+  for (std::vector<OGRGeometry*>::iterator g = overlaps.begin() ; g != overlaps.end(); g++) {
+    OGRPolygon *tmp = static_cast<OGRPolygon*>(*g);
+    OGRFeature *feature = OGRFeature::CreateFeature(layer->GetLayerDefn());
+    feature->SetField("Tags", 1);
+    feature->SetGeometry(tmp);
+    if (layer->CreateFeature(feature) != OGRERR_NONE)
+      std::cout << "Could not create feature." << std::endl;
+    // Free OGR feature
+    OGRFeature::DestroyFeature(feature);
+  }
+  //-- holes
+  if (thinness < 0.0) {
+    for (std::vector<OGRGeometry*>::iterator g = holes.begin() ; g != holes.end(); g++) {
+      OGRPolygon *tmp = static_cast<OGRPolygon*>(*g);
+      OGRFeature *feature = OGRFeature::CreateFeature(layer->GetLayerDefn());
+      feature->SetField("Tags", 0);
+      feature->SetGeometry(tmp);
+      if (layer->CreateFeature(feature) != OGRERR_NONE)
+        std::cout << "Could not create feature." << std::endl;
+      // Free OGR feature
+      OGRFeature::DestroyFeature(feature);
+    }
+  }
+  else {
+    std::vector<OGRGeometry*> slivers;
+    for (std::vector<OGRGeometry*>::iterator g = holes.begin() ; g != holes.end(); g++) {
+      OGRPolygon *tmp = static_cast<OGRPolygon*>(*g);
+      //-- use the magic formula from ELF project
+      double thinness = 4 * CGAL_PI * tmp->get_Area() / pow(tmp->getExteriorRing()->get_Length(), 2);
+      if ( (thinness < 0.30) && (tmp->get_Area() < minSliverArea) ) {
+        slivers.push_back(*g);
+      }
+    }
+    for (std::vector<OGRGeometry*>::iterator g = slivers.begin() ; g != slivers.end(); g++) {
+      OGRPolygon *tmp = static_cast<OGRPolygon*>(*g);
+      OGRFeature *feature = OGRFeature::CreateFeature(layer->GetLayerDefn());
+      feature->SetField("Tags", 0);
+      feature->SetGeometry(tmp);
+      if (layer->CreateFeature(feature) != OGRERR_NONE)
+        std::cout << "Could not create feature." << std::endl;
+      // Free OGR feature
+      OGRFeature::DestroyFeature(feature);
+    }
+  }
+  OGRDataSource::DestroyDataSource(dataSource);
+  return true;
+}
 
 void PlanarPartition::removeVertices() {
   // Remove unnecessary vertices completely surrounded by the same polygon

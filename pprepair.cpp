@@ -108,10 +108,13 @@ int main (int argc, char* const argv[]) {
     //-- validation only
     if (validation.getValue() == true) {
       if (pp.isValid() == false) {
-        std::cout << "\nValidation:\n\t planar partition is NOT valid." << std::endl;
+        std::cout << "\nValidation:\n\t planar partition is NOT valid.\n" << std::endl;
         pp.printTriangulationInfo();
-//        pp.reportProblemRegions(std::cout);
-        pp.reportProblemRegions(std::cout, 0.3, 500);
+        pp.printProblemRegions();
+        if (outerrors.getValue() != "") {
+          pp.exportProblemRegionsAsSHP(outerrors.getValue());
+//          pp.exportProblemRegionsAsSHP(outerrors.getValue(), 0.3, 500);
+        }
       }
       else {
         std::cout << "\nValidation:\n\t planar partition is valid." << std::endl;
