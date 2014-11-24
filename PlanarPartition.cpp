@@ -69,8 +69,8 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
   OGREnvelope bbox;
   dataLayer->GetExtent(&bbox);
   _bbox.Merge(bbox);
-  std::cout << _bbox.MinX << "," << _bbox.MinY << std::endl;
-  std::cout << _bbox.MaxX << "," << _bbox.MaxY << std::endl;
+//  std::cout << _bbox.MinX << "," << _bbox.MinY << std::endl;
+//  std::cout << _bbox.MaxX << "," << _bbox.MaxY << std::endl;
   
   OGRFeature *feature;
   feature = dataLayer->GetNextFeature();
