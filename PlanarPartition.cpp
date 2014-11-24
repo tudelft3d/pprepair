@@ -1784,6 +1784,7 @@ bool PlanarPartition::exportProblemRegionsAsSHP(std::string &file, double thinne
     }
   }
   else {
+    std::cout << "(ignoring slivers having [thinness < 0.3] and [minarea < " << minSliverArea << "])" << std::endl;
     std::vector<OGRGeometry*> slivers;
     for (std::vector<OGRGeometry*>::iterator g = holes.begin() ; g != holes.end(); g++) {
       OGRPolygon *tmp = static_cast<OGRPolygon*>(*g);

@@ -71,14 +71,16 @@ int main (int argc, char* const argv[]) {
   cmd.setOutput(&my);
   try {
     TCLAP::MultiArg<std::string> inputDSs       ("i", "input", "input OGR dataset (this can be used multiple times)", true, "string");
-    TCLAP::ValueArg<std::string> extent         ("e", "extent", "spatial extent (OGR dataset containing *one* polygon)", false, "", "string");
     TCLAP::ValueArg<std::string> outfiles       ("o", "output", "folder for repaired shapefile(s))", false, "","string");
-    TCLAP::ValueArg<std::string> repair         ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
+    TCLAP::ValueArg<std::string> extent         ("e", "extent", "spatial extent (OGR dataset containing *one* polygon)", false, "", "string");
     TCLAP::SwitchArg             validation     ("v", "validation", "validation only (gaps and overlaps reported)", false);
+    TCLAP::ValueArg<float>       elfslivers     ("",  "elf", "ignore holes that are slivers (provide minarea)", false, -1.0, "float");
+    TCLAP::ValueArg<std::string> repair         ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
     TCLAP::ValueArg<std::string> priority       ("p", "priority", "priority list for repairing (methods <PL|EM>)", false, "", "string");
     TCLAP::ValueArg<std::string> outerrors      ("",  "outerrors", "output errors to shapefile", false, "","string");
     TCLAP::ValueArg<std::string> outtr          ("",  "outtr", "output triangulation to shapefile", false, "","string");
 
+    cmd.add(elfslivers);
     cmd.add(outerrors);
     cmd.add(outtr);
     cmd.add(extent);
@@ -112,8 +114,12 @@ int main (int argc, char* const argv[]) {
         pp.printTriangulationInfo();
         pp.printProblemRegions();
         if (outerrors.getValue() != "") {
-          pp.exportProblemRegionsAsSHP(outerrors.getValue());
-//          pp.exportProblemRegionsAsSHP(outerrors.getValue(), 0.3, 500);
+          if (elfslivers.getValue() == -1.0) {
+            pp.exportProblemRegionsAsSHP(outerrors.getValue());
+          }
+          else {
+            pp.exportProblemRegionsAsSHP(outerrors.getValue(), 0.3, elfslivers.getValue());
+          }
         }
       }
       else {
@@ -122,7 +128,10 @@ int main (int argc, char* const argv[]) {
     }
     else { //-- repairing
       pp.printTriangulationInfo();
-      
+      pp.printProblemRegions();
+      if (outerrors.getValue() != "") 
+          pp.exportProblemRegionsAsSHP(outerrors.getValue());
+
       if ( (repair.getValue() == "PL") || (repair.getValue() == "EM") ){
         if (priority.getValue() == "") {
           std::cout << "Priority file must be provided." << std::endl;
@@ -143,6 +152,7 @@ int main (int argc, char* const argv[]) {
         pp.repair("RN");
       }
       pp.printTriangulationInfo();
+      pp.printProblemRegions();
       
       //-- output repaired SHP files
       if (outfiles.getValue() != "") {
