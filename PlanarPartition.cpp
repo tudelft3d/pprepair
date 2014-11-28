@@ -117,10 +117,78 @@ bool PlanarPartition::addOGRdataset(std::string &file) {
   if (lsInputFeatures.size() > 0) {
     allFeatureDefns.push_back(lsInputFeatures[0]->GetDefnRef());
   }
-  addFeatures(lsInputFeatures);
+  
+  if (validateSinglePolygons(lsInputFeatures) == false)
+    return false;
+  std::cout << "done." << std::endl;
+//  validateSinglePolygons(lsInputFeatures);
+  if (addFeatures(lsInputFeatures) == false)
+    return false;
   return true;
 }
 
+
+bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeatures) {
+  std::cout << "Validating individually every polygon..." << std::endl;
+  bool allvalid = true;
+  int idno = 0;
+  for (std::vector<OGRFeature*>::iterator it = lsOGRFeatures.begin() ; it != lsOGRFeatures.end(); ++it) {
+    std::cout << "Polygon #" << idno << std::endl;
+    switch((*it)->GetGeometryRef()->getGeometryType()) {
+      case wkbPolygon:
+      case wkbPolygon25D: {
+        OGRPolygon *geometry = (OGRPolygon *)(*it)->GetGeometryRef();
+        if (geometry->IsValid() == false) {
+          allvalid = false;
+        }
+        else {
+          //-- 1. check for duplicate vertices
+          //-- oring
+          for (int p = 0; p < (geometry->getExteriorRing()->getNumPoints() - 1); p++) {
+            Point a(geometry->getExteriorRing()->getX(p), geometry->getExteriorRing()->getY(p));
+            Point b(geometry->getExteriorRing()->getX(p+1), geometry->getExteriorRing()->getY(p+1));
+            if (a == b) {
+              allvalid = false;
+              std::cout << "Invalid polygon: duplicate vertices." << std::endl;
+              break;
+            }
+          }
+          //-- irings
+          for (int r = 0; r < geometry->getNumInteriorRings(); r++) {
+            for (int p = 0; p < (geometry->getInteriorRing(r)->getNumPoints() - 1); p++) {
+              Point a(geometry->getInteriorRing(r)->getX(p), geometry->getInteriorRing(r)->getY(p));
+              Point b(geometry->getInteriorRing(r)->getX(p+1), geometry->getInteriorRing(r)->getY(p+1));
+              if (a == b) {
+                allvalid = false;
+                std::cout << "Invalid polygon: duplicate vertices." << std::endl;
+                break;
+              }
+            }
+          }
+        }
+        break;
+      }
+      case wkbMultiPolygon:
+      case wkbMultiPolygon25D: {
+        // TODO : implement MultiPolygon!
+        std::cout << "MULTIPOLYGONS TO IMPLEMENT!!!" << std::endl;
+//        OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*it)->GetGeometryRef());
+//        for (int cur = 0; cur < geometry->getNumGeometries(); cur++) {
+//          OGRPolygon *thisGeometry = (OGRPolygon *)geometry->getGeometryRef(cur);
+//          if (thisGeometry->IsValid() == false) {
+//            allvalid = false;
+//          }
+//        }
+        break;
+      }
+      default: {
+        std::cout << "UNKNOWN GEOMETRY TYPE, skipping feature." << std::endl;
+      }
+    }
+    idno++;
+  }
+  return allvalid;
+}
 
 bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
   for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); f++) {
@@ -280,32 +348,7 @@ bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> 
 }
 
 
-bool PlanarPartition::validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures) {
-  for (std::vector<OGRFeature*>::iterator it = lsOGRFeatures.begin() ; it != lsOGRFeatures.end(); ++it) {
-    switch((*it)->GetGeometryRef()->getGeometryType()) {
-      case wkbPolygon:
-      case wkbPolygon25D: {
-        OGRPolygon *geometry = (OGRPolygon *)(*it)->GetGeometryRef();
-        //        OGRPolygon* a = (OGRPolygon *)geometry->clone();
-        break;
-      }
-      case wkbMultiPolygon:
-      case wkbMultiPolygon25D: {
-        OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*it)->GetGeometryRef());
-        for (int cur = 0; cur < geometry->getNumGeometries(); cur++) {
-          OGRPolygon *thisGeometry = (OGRPolygon *)geometry->getGeometryRef(cur);
-          //            OGRPolygon* a = (OGRPolygon *)thisGeometry->clone();
-          //            lsOGRFeatures.push_back(a);
-        }
-        break;
-      }
-      default: {
-        std::cout << "UNKNOWN GEOMETRY TYPE, skipping feature." << std::endl;
-      }
-    }
-  }
-  return true;
-}
+
 
 
 bool PlanarPartition::buildPP() {
