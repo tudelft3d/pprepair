@@ -84,6 +84,7 @@ private:
   bool getPriorityList(const std::string &priofile, std::map<std::string, unsigned int> &priorityMap, std::string &attr);
   bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeatures);
+  bool duplicateVerticesInPolygon(OGRPolygon* geometry);
   bool addFeatures(std::vector<OGRFeature*> &lsOGRFeatures);
   void tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHandle *handle);
   void addToLength(std::map<PolygonHandle *, double> &lengths, PolygonHandle *ph, double length);

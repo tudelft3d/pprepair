@@ -94,10 +94,13 @@ int main (int argc, char* const argv[]) {
     PlanarPartition pp;      
     std::vector<std::string> inputs = inputDSs.getValue();
     for (std::vector<std::string>::iterator it = inputs.begin() ; it != inputs.end(); ++it) {
-      if (pp.addOGRdataset(*it) == false)
-        throw false;
+      if (pp.addOGRdataset(*it) == false) {
+        std::string s("Some polygons are (individually) invalid.");
+        throw s;
+      }
+      
     }
-    std::cout << "Total input polygons: " << pp.noPolygons() << std::endl;
+    std::cout << std::endl << "Total input polygons: " << pp.noPolygons() << std::endl;
     //-- add spatial extent
     if (extent.getValue() != "") {
       if (pp.addOGRdatasetExtent(extent.getValue()) == false)
@@ -171,7 +174,12 @@ int main (int argc, char* const argv[]) {
     std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
     return(0);
   }
-  catch (bool problems) {
+  catch (std::string problem) {
+    std::cerr << std::endl << "ERROR: " << problem << " (repair them with prepair perhaps?)" << std::endl;
+    std::cerr << "Aborted." << std::endl;
+    return(0);
+  }
+  catch (bool b) {
     std::cerr << "Aborted." << std::endl;
     return(0);
   }
