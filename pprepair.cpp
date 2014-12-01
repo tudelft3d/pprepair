@@ -39,19 +39,20 @@ public:
       std::cout << "\t\t" << (*it)->getDescription() << std::endl;
     }
     std::cout << "EXAMPLES" << std::endl;
-    std::cout << "\tpprepair -i file1.shp -i file2.geojson -o /home/elvis/temp/ -r fix" << std::endl;
-    std::cout << "\t\tTakes 2 input files, repairs them with RandomNeighbour rule" << std::endl;
-    std::cout << "\t\tand outputs repaired shapefiles to /home/elvis/temp/ folder" << std::endl << std::endl;
     std::cout << "\tpprepair -i file1.shp -i file2.geojson --outerrors out.shp -v" << std::endl;
-    std::cout << "\t\tTakes 2 input files, validates them" << std::endl;
-    std::cout << "\t\tand output a shapefile with errors" << std::endl << std::endl;
+    std::cout << "\t\tTakes 2 input files, validates them," << std::endl;
+    std::cout << "\t\tand output the problematic regions to out.shp" << std::endl << std::endl;
+    std::cout << "\tpprepair -i file1.shp -i file2.geojson -o /home/elvis/temp/ -r fix" << std::endl;
+    std::cout << "\t\tTakes 2 input files, repairs them with the default method (RandomNeighbour)" << std::endl;
+    std::cout << "\t\tand outputs 2 repaired shapefiles to /home/elvis/temp/ folder" << std::endl;
+    std::cout << "\t\t(file1.r.shp and file2.r.shp)" << std::endl << std::endl;
     std::cout << "\tpprepair -i file1.shp -o /home/elvis/temp/ -r PL --priority prio.txt" << std::endl;
     std::cout << "\t\tTakes 1 input file, repairs it with PriorityList rule" << std::endl;
     std::cout << "\t\tand outputs the repaired shapefile to /home/elvis/temp/ folder" << std::endl << std::endl;
     std::cout << "\tpprepair -i file1.shp -e extent.geojson -o . -r LB" << std::endl;
     std::cout << "\t\tTakes 1 input file and a spatial extent file," << std::endl; 
-    std::cout << "\t\trepairs file1.shp for holes and gaps + aligns to the extent." << std::endl; 
-    std::cout << "\t\tResult shapefile saved to current folder" << std::endl << std::endl;
+    std::cout << "\t\trepairs file1.shp for holes and overlaps + 'aligns' it to extent.geojson" << std::endl; 
+    std::cout << "\t\tRepaired shapefile file1.r.shp saved to current folder" << std::endl << std::endl;
   }
 };
 
@@ -70,21 +71,23 @@ int main (int argc, char* const argv[]) {
   MyOutput my;
   cmd.setOutput(&my);
   try {
-    TCLAP::MultiArg<std::string> inputDSs       ("i", "input", "input OGR dataset (this can be used multiple times)", true, "string");
-    TCLAP::ValueArg<std::string> outfiles       ("o", "output", "folder for repaired shapefile(s))", false, "","string");
-    TCLAP::ValueArg<std::string> extent         ("e", "extent", "spatial extent (OGR dataset containing *one* polygon)", false, "", "string");
-    TCLAP::SwitchArg             validation     ("v", "validation", "validation only (gaps and overlaps reported)", false);
-    TCLAP::ValueArg<float>       elfslivers     ("",  "elf", "ignore holes that are slivers (provide minarea)", false, -1.0, "float");
-    TCLAP::ValueArg<std::string> repair         ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
-    TCLAP::ValueArg<std::string> priority       ("p", "priority", "priority list for repairing (methods <PL|EM>)", false, "", "string");
-    TCLAP::ValueArg<std::string> outerrors      ("",  "outerrors", "output errors to shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> outtr          ("",  "outtr", "output triangulation to shapefile", false, "","string");
+    TCLAP::MultiArg<std::string> inputDSs         ("i", "input", "input OGR dataset (this can be used multiple times)", true, "string");
+    TCLAP::ValueArg<std::string> outfiles         ("o", "output", "folder for repaired shapefile(s))", false, "","string");
+    TCLAP::ValueArg<std::string> extent           ("e", "extent", "spatial extent (OGR dataset containing *one* polygon)", false, "", "string");
+    TCLAP::SwitchArg             validation       ("v", "validation", "validation only (gaps and overlaps reported)", false);
+    TCLAP::SwitchArg             skipvalideach    ("",  "skipvalideach", "Skip the individual validation of each input polygon (activated by default)", false);
+    TCLAP::ValueArg<float>       elfslivers       ("",  "elf", "ignore holes that are slivers (provide minarea)", false, -1.0, "float");
+    TCLAP::ValueArg<std::string> repair           ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
+    TCLAP::ValueArg<std::string> priority         ("p", "priority", "priority list for repairing (methods <PL|EM>)", false, "", "string");
+    TCLAP::ValueArg<std::string> outerrors        ("",  "outerrors", "output errors to shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outtr            ("",  "outtr", "output triangulation to shapefile", false, "","string");
 
     cmd.add(elfslivers);
     cmd.add(outerrors);
     cmd.add(outtr);
     cmd.add(extent);
     cmd.add(priority);
+    cmd.add(skipvalideach);
     cmd.xorAdd(validation, repair);
     cmd.add(outfiles);
     cmd.add(inputDSs);
@@ -94,10 +97,13 @@ int main (int argc, char* const argv[]) {
     PlanarPartition pp;      
     std::vector<std::string> inputs = inputDSs.getValue();
     for (std::vector<std::string>::iterator it = inputs.begin() ; it != inputs.end(); ++it) {
-      if (pp.addOGRdataset(*it) == false)
-        throw false;
+      if (pp.addOGRdataset(*it, skipvalideach.getValue()) == false) {
+        std::string s("Some polygons are (individually) invalid.");
+        throw s;
+      }
+      
     }
-    std::cout << "Total input polygons: " << pp.noPolygons() << std::endl;
+    std::cout << std::endl << "Total input polygons: " << pp.noPolygons() << std::endl;
     //-- add spatial extent
     if (extent.getValue() != "") {
       if (pp.addOGRdatasetExtent(extent.getValue()) == false)
@@ -129,24 +135,23 @@ int main (int argc, char* const argv[]) {
     else { //-- repairing
       pp.printTriangulationInfo();
       pp.printProblemRegions();
-      if (outerrors.getValue() != "") 
-          pp.exportProblemRegionsAsSHP(outerrors.getValue());
+      if (outerrors.getValue() != "") {
+        pp.exportProblemRegionsAsSHP(outerrors.getValue());
+      }
 
       if ( (repair.getValue() == "PL") || (repair.getValue() == "EM") ){
         if (priority.getValue() == "") {
           std::cout << "Priority file must be provided." << std::endl;
           throw false;
         }
-        else
-          if (pp.repair(repair.getValue(), true, priority.getValue()) == false)
-            throw false;
+        else {
+          pp.repair(repair.getValue(), true, priority.getValue());
+        }
       }
       else {
-        if (pp.repair(repair.getValue()) == false)
-          throw false;
+        pp.repair(repair.getValue());
       }
       //-- if there was a 'tie' then fix with RN
-      // TODO: repair the 'ties' here or in the class?
       if (pp.isValid() == false) {
         std::cout << "Reparing 'ties'..." << std::endl;
         pp.repair("RN");
@@ -161,6 +166,9 @@ int main (int argc, char* const argv[]) {
           return(0);
         }
       }
+      else {
+        std::cout << "Results not saved anywhere (option '-o' wasn't set)" << std::endl;
+      }
     }
     //-- output triangulation in SHP
     if (outtr.getValue() != "") {
@@ -171,7 +179,12 @@ int main (int argc, char* const argv[]) {
     std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
     return(0);
   }
-  catch (bool problems) {
+  catch (std::string problem) {
+    std::cerr << std::endl << "ERROR: " << problem << " (our other project 'prepair' can perform automatic repair of single polygons)" << std::endl;
+    std::cerr << "Aborted." << std::endl;
+    return(0);
+  }
+  catch (bool b) {
     std::cerr << "Aborted." << std::endl;
     return(0);
   }

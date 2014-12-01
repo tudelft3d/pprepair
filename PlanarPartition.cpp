@@ -103,13 +103,13 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
 }
 
 
-bool PlanarPartition::addOGRdataset(std::string &file) {
+bool PlanarPartition::addOGRdataset(std::string &file, bool skipvalideach) {
   // Check if we have already made changes to the triangulation
   if (state > TRIANGULATED) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
 		return false;
 	}
-  std::cout << "Adding dataset" << std::endl << "\t" << file << std::endl;
+  std::cout << "Reading dataset: " << file << std::endl;
   std::vector<OGRFeature*> lsInputFeatures;
   if (getOGRFeatures(file, lsInputFeatures) == false)
     return false;
@@ -117,12 +117,95 @@ bool PlanarPartition::addOGRdataset(std::string &file) {
   if (lsInputFeatures.size() > 0) {
     allFeatureDefns.push_back(lsInputFeatures[0]->GetDefnRef());
   }
-  addFeatures(lsInputFeatures);
+  
+  if (skipvalideach == false) {
+    if (validateSinglePolygons(lsInputFeatures) == false)
+      return false;
+    std::cout << "\tDone, all polygons are valid." << std::endl;
+  }
+  else {
+    std::cout << "\t->Individual validation of polygons skipped (at your own risk!)" << std::endl;
+  }
+  if (addFeatures(lsInputFeatures) == false)
+    return false;
   return true;
 }
 
+bool PlanarPartition::duplicateVerticesInPolygon(OGRPolygon* geometry) {
+  bool valid = true;
+  //-- 1. check for duplicate vertices
+  //-- oring
+  for (int p = 0; p < (geometry->getExteriorRing()->getNumPoints() - 1); p++) {
+    Point a(geometry->getExteriorRing()->getX(p), geometry->getExteriorRing()->getY(p));
+    Point b(geometry->getExteriorRing()->getX(p+1), geometry->getExteriorRing()->getY(p+1));
+    if (a == b) {
+      valid = false;
+      std::cout << "Invalid polygon: duplicate vertices." << std::endl;
+      break;
+    }
+  }
+  //-- irings
+  for (int r = 0; r < geometry->getNumInteriorRings(); r++) {
+    for (int p = 0; p < (geometry->getInteriorRing(r)->getNumPoints() - 1); p++) {
+      Point a(geometry->getInteriorRing(r)->getX(p), geometry->getInteriorRing(r)->getY(p));
+      Point b(geometry->getInteriorRing(r)->getX(p+1), geometry->getInteriorRing(r)->getY(p+1));
+      if (a == b) {
+        valid = false;
+        std::cout << "Invalid polygon: duplicate vertices." << std::endl;
+        break;
+      }
+    }
+  }
+  return valid;
+}
+
+
+bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeatures) {
+  std::cout << "\tValidating individually every polygon..." << std::endl;
+  bool allvalid = true;
+  int idno = 0;
+  for (std::vector<OGRFeature*>::iterator it = lsOGRFeatures.begin() ; it != lsOGRFeatures.end(); ++it) {
+    std::cout << "\tPolygon #" << idno << std::endl;
+    switch((*it)->GetGeometryRef()->getGeometryType()) {
+      case wkbPolygon:
+      case wkbPolygon25D: {
+        OGRPolygon *geometry = (OGRPolygon *)(*it)->GetGeometryRef();
+        if (geometry->IsValid() == false) {
+          allvalid = false;
+        }
+        else {
+          if (duplicateVerticesInPolygon(geometry) == false)
+            allvalid = false;
+        }
+        break;
+      }
+      case wkbMultiPolygon:
+      case wkbMultiPolygon25D: {
+        OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*it)->GetGeometryRef());
+        for (int cur = 0; cur < geometry->getNumGeometries(); cur++) {
+          OGRPolygon *p = (OGRPolygon *)geometry->getGeometryRef(cur);
+          if (p->IsValid() == false) {
+            allvalid = false;
+          }
+          else {
+            if (duplicateVerticesInPolygon(p) == false) {
+              allvalid = false;
+            }
+          }
+        }
+        break;
+      }
+      default: {
+        std::cout << "UNKNOWN GEOMETRY TYPE, skipping feature." << std::endl;
+      }
+    }
+    idno++;
+  }
+  return allvalid;
+}
 
 bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
+  std::cout << "\tAdding the polygons to the PP..." << std::endl;
   for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); f++) {
     std::vector<Polygon> polygonsVector;
     std::vector<std::list<Point> > outerRingsList;
@@ -132,11 +215,11 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
       case wkbPolygon25D: {
         OGRPolygon *geometry = static_cast<OGRPolygon *>((*f)->GetGeometryRef());
         outerRingsList.push_back(std::list<Point>());
-        // Get outer ring
+        // oring
         for (int currentPoint = 0; currentPoint < (geometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
           outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint),
                                                 geometry->getExteriorRing()->getY(currentPoint)));
-        // Get inner rings
+        // irings
         innerRingsList.reserve(geometry->getNumInteriorRings());
         for (int currentRing = 0; currentRing < geometry->getNumInteriorRings(); currentRing++) {
           innerRingsList.push_back(std::list<Point>());
@@ -162,13 +245,11 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
         for (int currentPolygon = 0; currentPolygon < geometry->getNumGeometries(); currentPolygon++) {
           OGRPolygon *thisGeometry = static_cast<OGRPolygon *>(geometry->getGeometryRef(currentPolygon));
           outerRingsList.push_back(std::list<Point>());
-          
-          // Get outer ring
+          // oring
           for (int currentPoint = 0; currentPoint < (thisGeometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
             outerRingsList.back().push_back(Point(thisGeometry->getExteriorRing()->getX(currentPoint),
                                                   thisGeometry->getExteriorRing()->getY(currentPoint)));
-          
-          // Get inner rings
+          // irings
           innerRingsList.reserve(innerRingsList.size()+thisGeometry->getNumInteriorRings());
           for (int currentRing = 0; currentRing < thisGeometry->getNumInteriorRings(); currentRing++) {
             innerRingsList.push_back(std::list<Point>());
@@ -177,7 +258,6 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
                                                     thisGeometry->getInteriorRing(currentRing)->getY(currentPoint)));
             }
           }
-          // TODO: fix here for multipolygon
           Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
           outerRingsList.clear();
           std::vector<Ring> irings;
@@ -275,37 +355,12 @@ bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> 
   }
   // Free OGR data source
   OGRDataSource::DestroyDataSource(dataSource);
-  std::cout << "\tdone." << std::endl;
+//  std::cout << "\tdone." << std::endl;
   return true;
 }
 
 
-bool PlanarPartition::validateSingleGeom(std::vector<OGRFeature*> &lsOGRFeatures) {
-  for (std::vector<OGRFeature*>::iterator it = lsOGRFeatures.begin() ; it != lsOGRFeatures.end(); ++it) {
-    switch((*it)->GetGeometryRef()->getGeometryType()) {
-      case wkbPolygon:
-      case wkbPolygon25D: {
-        OGRPolygon *geometry = (OGRPolygon *)(*it)->GetGeometryRef();
-        //        OGRPolygon* a = (OGRPolygon *)geometry->clone();
-        break;
-      }
-      case wkbMultiPolygon:
-      case wkbMultiPolygon25D: {
-        OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*it)->GetGeometryRef());
-        for (int cur = 0; cur < geometry->getNumGeometries(); cur++) {
-          OGRPolygon *thisGeometry = (OGRPolygon *)geometry->getGeometryRef(cur);
-          //            OGRPolygon* a = (OGRPolygon *)thisGeometry->clone();
-          //            lsOGRFeatures.push_back(a);
-        }
-        break;
-      }
-      default: {
-        std::cout << "UNKNOWN GEOMETRY TYPE, skipping feature." << std::endl;
-      }
-    }
-  }
-  return true;
-}
+
 
 
 bool PlanarPartition::buildPP() {
@@ -401,6 +456,7 @@ bool PlanarPartition::buildPP() {
   tagStack(stack, &universetag);
   
   state = TAGGED;
+  isValid();
   return true;
 }
 
@@ -963,7 +1019,7 @@ bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const
 		return false;
 	}
   if (state > TAGGED) {
-		std::cout << "Triangulation already repaired!" << std::endl;
+		std::cout << "PP already valid!" << std::endl;
 		return false;
 	}
   
@@ -1679,7 +1735,6 @@ void PlanarPartition::printTriangulationInfo(std::ostream &ostr) {
   ostr << "\tOk:       " << tag1 << " triangles" << std::endl <<
   "\tOverlaps: "         << tag2 << " triangles" << std::endl <<
   "\tHoles:    "         << tag0 << " triangles" << std::endl;
-//  std::cout << "*********************" << std::endl;  
 }
 
 
