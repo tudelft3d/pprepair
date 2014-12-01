@@ -103,7 +103,7 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
 }
 
 
-bool PlanarPartition::addOGRdataset(std::string &file) {
+bool PlanarPartition::addOGRdataset(std::string &file, bool skipvalideach) {
   // Check if we have already made changes to the triangulation
   if (state > TRIANGULATED) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
@@ -118,9 +118,14 @@ bool PlanarPartition::addOGRdataset(std::string &file) {
     allFeatureDefns.push_back(lsInputFeatures[0]->GetDefnRef());
   }
   
-  if (validateSinglePolygons(lsInputFeatures) == false)
-    return false;
-  std::cout << "\tDone, all polygons are valid." << std::endl;
+  if (skipvalideach == false) {
+    if (validateSinglePolygons(lsInputFeatures) == false)
+      return false;
+    std::cout << "\tDone, all polygons are valid." << std::endl;
+  }
+  else {
+    std::cout << "\t->Individual validation of polygons skipped (at your own risk!)" << std::endl;
+  }
   if (addFeatures(lsInputFeatures) == false)
     return false;
   return true;
@@ -200,7 +205,7 @@ bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeat
 }
 
 bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
-  std::cout << "\tCrunching and saving the polygons..." << std::endl;
+  std::cout << "\tAdding the polygons to the PP..." << std::endl;
   for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); f++) {
     std::vector<Polygon> polygonsVector;
     std::vector<std::list<Point> > outerRingsList;
@@ -209,13 +214,12 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
       case wkbPolygon:
       case wkbPolygon25D: {
         OGRPolygon *geometry = static_cast<OGRPolygon *>((*f)->GetGeometryRef());
-//        std::cout << geometry->getExteriorRing()->getNumPoints() << std::endl;
         outerRingsList.push_back(std::list<Point>());
-        // Get outer ring
+        // oring
         for (int currentPoint = 0; currentPoint < (geometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
           outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint),
                                                 geometry->getExteriorRing()->getY(currentPoint)));
-        // Get inner rings
+        // irings
         innerRingsList.reserve(geometry->getNumInteriorRings());
         for (int currentRing = 0; currentRing < geometry->getNumInteriorRings(); currentRing++) {
           innerRingsList.push_back(std::list<Point>());
@@ -241,13 +245,11 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
         for (int currentPolygon = 0; currentPolygon < geometry->getNumGeometries(); currentPolygon++) {
           OGRPolygon *thisGeometry = static_cast<OGRPolygon *>(geometry->getGeometryRef(currentPolygon));
           outerRingsList.push_back(std::list<Point>());
-          
-          // Get outer ring
+          // oring
           for (int currentPoint = 0; currentPoint < (thisGeometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
             outerRingsList.back().push_back(Point(thisGeometry->getExteriorRing()->getX(currentPoint),
                                                   thisGeometry->getExteriorRing()->getY(currentPoint)));
-          
-          // Get inner rings
+          // irings
           innerRingsList.reserve(innerRingsList.size()+thisGeometry->getNumInteriorRings());
           for (int currentRing = 0; currentRing < thisGeometry->getNumInteriorRings(); currentRing++) {
             innerRingsList.push_back(std::list<Point>());
@@ -256,7 +258,6 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
                                                     thisGeometry->getInteriorRing(currentRing)->getY(currentPoint)));
             }
           }
-          // TODO: fix here for multipolygon
           Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
           outerRingsList.clear();
           std::vector<Ring> irings;
@@ -315,7 +316,6 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
   if (triangulation.number_of_faces() > 0) {
     state = TRIANGULATED;
   }
-  std::cout << "\tdone." << std::endl;
   return true;
 }
 
@@ -456,6 +456,7 @@ bool PlanarPartition::buildPP() {
   tagStack(stack, &universetag);
   
   state = TAGGED;
+  isValid();
   return true;
 }
 
@@ -1018,7 +1019,7 @@ bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const
 		return false;
 	}
   if (state > TAGGED) {
-		std::cout << "Triangulation already repaired!" << std::endl;
+		std::cout << "PP already valid!" << std::endl;
 		return false;
 	}
   
@@ -1734,7 +1735,6 @@ void PlanarPartition::printTriangulationInfo(std::ostream &ostr) {
   ostr << "\tOk:       " << tag1 << " triangles" << std::endl <<
   "\tOverlaps: "         << tag2 << " triangles" << std::endl <<
   "\tHoles:    "         << tag0 << " triangles" << std::endl;
-//  std::cout << "*********************" << std::endl;  
 }
 
 
