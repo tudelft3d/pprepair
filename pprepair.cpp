@@ -76,7 +76,7 @@ int main (int argc, char* const argv[]) {
     TCLAP::ValueArg<std::string> extent           ("e", "extent", "spatial extent (OGR dataset containing *one* polygon)", false, "", "string");
     TCLAP::SwitchArg             validation       ("v", "validation", "validation only (gaps and overlaps reported)", false);
     TCLAP::SwitchArg             skipvalideach    ("",  "skipvalideach", "Skip the individual validation of each input polygon (activated by default)", false);
-    TCLAP::ValueArg<float>       elfslivers       ("",  "elf", "ignore holes that are slivers (provide minarea)", false, -1.0, "float");
+    TCLAP::ValueArg<float>       elfslivers       ("",  "elf", "ignore holes that are not slivers (provide minarea)", false, -1.0, "float");
     TCLAP::ValueArg<std::string> repair           ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
     TCLAP::ValueArg<std::string> priority         ("p", "priority", "priority list for repairing (methods <PL|EM>)", false, "", "string");
     TCLAP::ValueArg<std::string> outerrors        ("",  "outerrors", "output errors to shapefile", false, "","string");
