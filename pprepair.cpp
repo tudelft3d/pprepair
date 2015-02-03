@@ -113,6 +113,8 @@ int main (int argc, char* const argv[]) {
     //-- tag the triangulation
     pp.buildPP();
     
+    pp.test();
+    
     //-- validation only
     if (validation.getValue() == true) {
       if (pp.isValid() == false) {

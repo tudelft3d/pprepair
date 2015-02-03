@@ -1227,6 +1227,26 @@ bool PlanarPartition::isValid() {
 }
 
 
+bool PlanarPartition::test() {
+  Triangulation::Finite_vertices_iterator v = triangulation.finite_vertices_begin();
+  
+  while (v != triangulation.finite_vertices_end()) {
+    std::cout << "---" << v->point().x() << ":" << v->point().y() << std::endl;
+    Triangulation::Face_circulator ff = triangulation.incident_faces(v), curF = ff;
+    do {
+      int i = curF->index(v);
+      std::cout << curF->info().numberOfTags() << std::endl;
+      std::cout << "c: " << curF->is_constrained(curF->ccw(i)) << std::endl;
+      if (curF->info().getTags() == &universetag)
+        std::cout << "UNIVERSE TAG" << std::endl;
+      curF++;
+    } while (curF != ff);
+    v++;
+  }
+  return true;
+}
+
+
 bool PlanarPartition::splitRegions(double ratio) {
 	if (state < TAGGED) {
 		std::cout << "Triangulation not yet tagged. Cannot split!" << std::endl;

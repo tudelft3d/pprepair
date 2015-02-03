@@ -53,6 +53,8 @@ public:
 //  bool addAllowedHoles(const char *file);
   bool splitRegions(double ratio);
   bool hasSpatialExtent();
+  
+  bool test();
 
   
 private:
