@@ -139,7 +139,7 @@ int main (int argc, char* const argv[]) {
         pp.exportProblemRegionsAsSHP(outerrors.getValue());
       }
       
-      pp.add_constraints();
+      pp.add_extra_constraints();
 
       if ( (repair.getValue() == "PL") || (repair.getValue() == "EM") ){
         if (priority.getValue() == "") {

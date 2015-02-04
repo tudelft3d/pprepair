@@ -54,7 +54,7 @@ public:
   bool splitRegions(double ratio);
   bool hasSpatialExtent();
   
-  bool add_constraints();
+  bool add_extra_constraints();
 
   
 private:
