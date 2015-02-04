@@ -124,7 +124,7 @@ bool PlanarPartition::addOGRdataset(std::string &file, bool skipvalideach) {
     std::cout << "\tDone, all polygons are valid." << std::endl;
   }
   else {
-    std::cout << "\t->Individual validation of polygons skipped (at your own risk!)" << std::endl;
+    std::cout << "\t->Individual validation of polygons skipped (AT YOUR OWN RISK!)" << std::endl;
   }
   if (addFeatures(lsInputFeatures) == false)
     return false;
@@ -361,8 +361,6 @@ bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> 
 
 
 
-
-
 bool PlanarPartition::buildPP() {
   if (state < TRIANGULATED) {
     std::cout << "No triangulation to tag!" << std::endl;
@@ -386,8 +384,10 @@ bool PlanarPartition::buildPP() {
       previousVertex = triangulation.vertices_in_constraint_begin(edgesToTag[currentPolygon].first[currentEdge],
                                                                   edgesToTag[currentPolygon].first[(currentEdge+1)%edgesToTag[currentPolygon].first.size()]);
       // Check if the returned order is the same
-      if ((*previousVertex)->point() == edgesToTag[currentPolygon].first[currentEdge]->point()) sameOrder = true;
-      else sameOrder = false;
+      if ((*previousVertex)->point() == edgesToTag[currentPolygon].first[currentEdge]->point())
+        sameOrder = true;
+      else
+        sameOrder = false;
       currentVertex = previousVertex;
       ++currentVertex;
       while (currentVertex != triangulation.vertices_in_constraint_end(edgesToTag[currentPolygon].first[currentEdge],
@@ -411,7 +411,6 @@ bool PlanarPartition::buildPP() {
     edgesToTag[currentPolygon].first.clear();
     
     // Inner boundaries
-    // Should not be done unless we can ensure that holes are inside polygons, but keep it in mind...
     for (unsigned int currentRing = 0; currentRing < edgesToTag[currentPolygon].second.size(); ++currentRing) {
       for (unsigned int currentEdge = 0; currentEdge < edgesToTag[currentPolygon].second[currentRing].size(); ++currentEdge) {
         previousVertex = triangulation.vertices_in_constraint_begin(edgesToTag[currentPolygon].second[currentRing].at(currentEdge),
@@ -474,14 +473,16 @@ void PlanarPartition::tagStack(std::stack<Triangulation::Face_handle> &stack, Po
 	while (!stack.empty()) {
 		Triangulation::Face_handle currentFace = stack.top();
 		stack.pop();
-		currentFace->info().addTag(handle);
+//		currentFace->info().addTag(handle);
 		if (!currentFace->neighbor(0)->info().hasTag(handle) && !currentFace->is_constrained(0)) {
 			currentFace->neighbor(0)->info().addTag(handle);
 			stack.push(currentFace->neighbor(0));
-		} if (!currentFace->neighbor(1)->info().hasTag(handle) && !currentFace->is_constrained(1)) {
+		}
+    if (!currentFace->neighbor(1)->info().hasTag(handle) && !currentFace->is_constrained(1)) {
 			currentFace->neighbor(1)->info().addTag(handle);
 			stack.push(currentFace->neighbor(1));
-		} if (!currentFace->neighbor(2)->info().hasTag(handle) && !currentFace->is_constrained(2)) {
+		}
+    if (!currentFace->neighbor(2)->info().hasTag(handle) && !currentFace->is_constrained(2)) {
 			currentFace->neighbor(2)->info().addTag(handle);
 			stack.push(currentFace->neighbor(2));
 		}
@@ -1229,14 +1230,16 @@ bool PlanarPartition::isValid() {
 }
 
 
-bool PlanarPartition::add_constraints() {
+bool PlanarPartition::add_extra_constraints() {
 //-- 1. find and store vertices with d>2 and incident to hole
-  std::list<Triangulation::Vertex_handle> impvs;
+  std::list<Triangulation::Vertex_handle> vs_hole;
+  std::list<Triangulation::Vertex_handle> vs_ol; //overlaps
   Triangulation::Finite_vertices_iterator v = triangulation.finite_vertices_begin();
   while (v != triangulation.finite_vertices_end()) {
     Triangulation::Face_circulator ff = triangulation.incident_faces(v), curF = ff;
     int noconstraints = 0;
     bool holeinstar = false;
+    bool olinstar = false;
     bool infinite = false;
     do {
       int i = curF->index(v);
@@ -1244,23 +1247,29 @@ bool PlanarPartition::add_constraints() {
         noconstraints++;
       if (curF->info().isHole() == true)
         holeinstar = true;
+      if (curF->info().isOverlap() == true)
+        olinstar = true;
       if (triangulation.is_infinite(curF) == true)
         infinite = true;
       curF++;
     } while (curF != ff);
-    if ( (infinite == false) && (noconstraints > 2) && (holeinstar == true))
-      impvs.push_back(v);
+    if ( (infinite == false) && (noconstraints > 2) ) {
+      if (holeinstar == true)
+        vs_hole.push_back(v);
+      if (olinstar == true)
+        vs_ol.push_back(v);
+    } 
     v++;
   }
 //  int j = 1;
 //  std::cout << "---SUMMARY---" << std::endl;
-//  for (std::list<Triangulation::Vertex_handle>::iterator curv = impvs.begin(); curv != impvs.end(); curv++) {
+//  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
 //    std::cout << j << " -- " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
 //    j++;
 //  }
   
 //-- 2. add all the constraints between 2 hole triangles
-  for (std::list<Triangulation::Vertex_handle>::iterator curv = impvs.begin(); curv != impvs.end(); curv++) {
+  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
     Triangulation::Face_circulator ff = triangulation.incident_faces(*curv), curF = ff;
     do {
       if (curF->info().isHole() == true) {
@@ -1271,6 +1280,20 @@ bool PlanarPartition::add_constraints() {
       curF++;
     } while (curF != ff);
   }
+
+//-- 3. add all the constraints between 2 overlap triangles
+  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_ol.begin(); curv != vs_ol.end(); curv++) {
+    Triangulation::Face_circulator ff = triangulation.incident_faces(*curv), curF = ff;
+    do {
+      if (curF->info().isOverlap() == true) {
+        int i = curF->index(*curv);
+        if (curF->neighbor(curF->ccw(i))->info().isOverlap() == true)
+          curF->set_constraint(curF->ccw(i), true);
+      }
+      curF++;
+    } while (curF != ff);
+  }
+
   return true;
 }
 
