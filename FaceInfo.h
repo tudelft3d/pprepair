@@ -32,6 +32,8 @@ public:
   
   // Clean (and expensive) access operations
 	bool hasTag(PolygonHandle *handle);
+  bool isOverlap() const;
+  bool isHole() const;
   bool hasNoTags() const;
   bool hasOneTag() const;
   unsigned int numberOfTags() const;

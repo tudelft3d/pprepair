@@ -1046,7 +1046,9 @@ bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const
     std::cout << "Repairing with edge-matching method...";
     std::map<std::string, unsigned int> priorityMap;
     std::string attr;
-    getPriorityList(priofile, priorityMap, attr);
+    if (getPriorityList(priofile, priorityMap, attr) == false) {
+      return false;
+    }
     if (attr == "datasets") {
       std::cout << "datasets." << std::endl;
       repaired = repairEM_dataset(priorityMap, alsoUniverse);
@@ -1227,21 +1229,47 @@ bool PlanarPartition::isValid() {
 }
 
 
-bool PlanarPartition::test() {
+bool PlanarPartition::add_constraints() {
+//-- 1. find and store vertices with d>2 and incident to hole
+  std::list<Triangulation::Vertex_handle> impvs;
   Triangulation::Finite_vertices_iterator v = triangulation.finite_vertices_begin();
-  
   while (v != triangulation.finite_vertices_end()) {
-    std::cout << "---" << v->point().x() << ":" << v->point().y() << std::endl;
     Triangulation::Face_circulator ff = triangulation.incident_faces(v), curF = ff;
+    int noconstraints = 0;
+    bool holeinstar = false;
+    bool infinite = false;
     do {
       int i = curF->index(v);
-      std::cout << curF->info().numberOfTags() << std::endl;
-      std::cout << "c: " << curF->is_constrained(curF->ccw(i)) << std::endl;
-      if (curF->info().getTags() == &universetag)
-        std::cout << "UNIVERSE TAG" << std::endl;
+      if (curF->is_constrained(curF->ccw(i)) == true)
+        noconstraints++;
+      if (curF->info().isHole() == true)
+        holeinstar = true;
+      if (triangulation.is_infinite(curF) == true)
+        infinite = true;
       curF++;
     } while (curF != ff);
+    if ( (infinite == false) && (noconstraints > 2) && (holeinstar == true))
+      impvs.push_back(v);
     v++;
+  }
+//  int j = 1;
+//  std::cout << "---SUMMARY---" << std::endl;
+//  for (std::list<Triangulation::Vertex_handle>::iterator curv = impvs.begin(); curv != impvs.end(); curv++) {
+//    std::cout << j << " -- " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+//    j++;
+//  }
+  
+//-- 2. add all the constraints between 2 hole triangles
+  for (std::list<Triangulation::Vertex_handle>::iterator curv = impvs.begin(); curv != impvs.end(); curv++) {
+    Triangulation::Face_circulator ff = triangulation.incident_faces(*curv), curF = ff;
+    do {
+      if (curF->info().isHole() == true) {
+        int i = curF->index(*curv);
+        if (curF->neighbor(curF->ccw(i))->info().isHole() == true)
+          curF->set_constraint(curF->ccw(i), true);
+      }
+      curF++;
+    } while (curF != ff);
   }
   return true;
 }

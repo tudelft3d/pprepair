@@ -113,8 +113,6 @@ int main (int argc, char* const argv[]) {
     //-- tag the triangulation
     pp.buildPP();
     
-    pp.test();
-    
     //-- validation only
     if (validation.getValue() == true) {
       if (pp.isValid() == false) {
@@ -140,6 +138,8 @@ int main (int argc, char* const argv[]) {
       if (outerrors.getValue() != "") {
         pp.exportProblemRegionsAsSHP(outerrors.getValue());
       }
+      
+      pp.add_constraints();
 
       if ( (repair.getValue() == "PL") || (repair.getValue() == "EM") ){
         if (priority.getValue() == "") {
@@ -147,7 +147,9 @@ int main (int argc, char* const argv[]) {
           throw false;
         }
         else {
-          pp.repair(repair.getValue(), true, priority.getValue());
+          if (pp.repair(repair.getValue(), true, priority.getValue()) == false) {
+            throw false;
+          }
         }
       }
       else {
