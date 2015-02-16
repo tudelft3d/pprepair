@@ -165,17 +165,19 @@ bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeat
   bool allvalid = true;
   int idno = 0;
   for (std::vector<OGRFeature*>::iterator it = lsOGRFeatures.begin() ; it != lsOGRFeatures.end(); ++it) {
-    std::cout << "\tPolygon #" << idno << std::endl;
     switch((*it)->GetGeometryRef()->getGeometryType()) {
       case wkbPolygon:
       case wkbPolygon25D: {
         OGRPolygon *geometry = (OGRPolygon *)(*it)->GetGeometryRef();
         if (geometry->IsValid() == false) {
           allvalid = false;
+          std::cout << "--> Polygon #" << idno << std::endl;
         }
         else {
-          if (duplicateVerticesInPolygon(geometry) == false)
+          if (duplicateVerticesInPolygon(geometry) == false) {
             allvalid = false;
+            std::cout << "--> Polygon #" << idno << std::endl;
+          }
         }
         break;
       }
@@ -186,10 +188,12 @@ bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeat
           OGRPolygon *p = (OGRPolygon *)geometry->getGeometryRef(cur);
           if (p->IsValid() == false) {
             allvalid = false;
+            std::cout << "--> Polygon #" << idno << std::endl;
           }
           else {
             if (duplicateVerticesInPolygon(p) == false) {
               allvalid = false;
+              std::cout << "--> Polygon #" << idno << std::endl;
             }
           }
         }
