@@ -858,14 +858,16 @@ bool PlanarPartition::repairEM_dataset(std::map<std::string, unsigned int> &prio
         facesToProcess.pop();
         processedFaces.insert(currentFaceInStack);
         if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
-            !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
           facesInRegion.insert(currentFaceInStack->neighbor(0));
           facesToProcess.push(currentFaceInStack->neighbor(0));
-        } if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
+        }
+        if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
               !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
           facesInRegion.insert(currentFaceInStack->neighbor(1));
           facesToProcess.push(currentFaceInStack->neighbor(1));
-        } if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
+        }
+        if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
               !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
           facesInRegion.insert(currentFaceInStack->neighbor(2));
           facesToProcess.push(currentFaceInStack->neighbor(2));
@@ -1265,38 +1267,45 @@ bool PlanarPartition::add_extra_constraints() {
     } 
     v++;
   }
-//  int j = 1;
-//  std::cout << "---SUMMARY---" << std::endl;
-//  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
-//    std::cout << j << " -- " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
-//    j++;
-//  }
-  
-//-- 2. add all the constraints between 2 hole triangles
+  int j = 1;
+  std::cout << "---SUMMARY vs_holes---" << std::endl;
   for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
+    std::cout << j << " -- " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+    j++;
+  }
+  
+//-- 2. add *all* the constraints between 2 hole triangles
+  std::cout << "CONSTRAINTS ADDED" << std::endl;
+  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
+//    std::cout << "veerteexx" << std::endl;
     Triangulation::Face_circulator ff = triangulation.incident_faces(*curv), curF = ff;
     do {
       if (curF->info().isHole() == true) {
         int i = curF->index(*curv);
-        if (curF->neighbor(curF->ccw(i))->info().isHole() == true)
+        if (curF->neighbor(curF->ccw(i))->info().isHole() == true) {
           curF->set_constraint(curF->ccw(i), true);
+          std::cout << " A: " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+          std::cout << " B: " << (curF->vertex(curF->cw(i)))->point().x() << ":" << (curF->vertex(curF->cw(i)))->point().y() << std::endl;
+//          (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+          break;
+        }
       }
       curF++;
     } while (curF != ff);
   }
 
-//-- 3. add all the constraints between 2 overlap triangles
-  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_ol.begin(); curv != vs_ol.end(); curv++) {
-    Triangulation::Face_circulator ff = triangulation.incident_faces(*curv), curF = ff;
-    do {
-      if (curF->info().isOverlap() == true) {
-        int i = curF->index(*curv);
-        if (curF->neighbor(curF->ccw(i))->info().isOverlap() == true)
-          curF->set_constraint(curF->ccw(i), true);
-      }
-      curF++;
-    } while (curF != ff);
-  }
+////-- 3. add all the constraints between 2 overlap triangles
+//  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_ol.begin(); curv != vs_ol.end(); curv++) {
+//    Triangulation::Face_circulator ff = triangulation.incident_faces(*curv), curF = ff;
+//    do {
+//      if (curF->info().isOverlap() == true) {
+//        int i = curF->index(*curv);
+//        if (curF->neighbor(curF->ccw(i))->info().isOverlap() == true)
+//          curF->set_constraint(curF->ccw(i), true);
+//      }
+//      curF++;
+//    } while (curF != ff);
+//  }
 
   return true;
 }
