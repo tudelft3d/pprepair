@@ -56,6 +56,9 @@ typedef CGAL::Exact_predicates_exact_constructions_kernel K;
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 #endif
 
+
+#include <CGAL/squared_distance_2.h>
+
 // Low level stuff
 #ifdef TRIANGULATION_HIERARCHY
 #ifdef USE_VERTEX_INFO

@@ -80,6 +80,8 @@ private:
                          bool alsoUniverse = true); //-- Edge-Matching prio based on polygon's attribute and prio list
   bool repairEM_dataset(std::map<std::string, unsigned int> &priorityMap,
                        bool alsoUniverse = true); //-- Edge-Matching prio based on DataSet order
+  bool repairEM_dataset_2(std::map<std::string, unsigned int> &priorityMap,
+                        bool alsoUniverse = true); //-- Edge-Matching prio based on DataSet order
 
   
   void getProblemRegionsAsOGR(std::vector<OGRGeometry*> &holes, std::vector<OGRGeometry*> &overlaps);
