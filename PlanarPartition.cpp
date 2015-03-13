@@ -955,7 +955,7 @@ bool PlanarPartition::repairEM_dataset(std::map<std::string, unsigned int> &prio
 
 bool PlanarPartition::repairEM_dataset_2(std::map<std::string, unsigned int> &priorityMap, bool alsoUniverse) {
   
-//  add_extra_constraints();
+  add_extra_constraints();
   
   // Use a temporary vector to make it deterministic and order independent
   std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
@@ -1020,8 +1020,108 @@ bool PlanarPartition::repairEM_dataset_2(std::map<std::string, unsigned int> &pr
           }
         }
       }
-      //-- 2. get all DS
+      std::cout << "# tr: " << facesInRegion.size() << std::endl;
       
+      //-- 2. get all neighbouring DS and pick the strongest
+      PolygonHandle *tagToAssign = NULL;
+      unsigned int priorityOfTagg = 0;
+      std::map<std::string, unsigned int>::const_iterator itatt;
+      for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+        for (int j = 0; j <= 2; j++) {
+          if (!(*currentFaceInRegion)->neighbor(j)->info().isHole()) {
+            if ((*currentFaceInRegion)->neighbor(j)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(j)->info().getTags() != &universetag) {
+              std::string v = (*currentFaceInRegion)->neighbor(j)->info().getTags()->getDSName();
+              itatt = priorityMap.find(v);
+              if ( (itatt != priorityMap.end()) && (itatt->second >= priorityOfTagg) ) {
+                priorityOfTagg = itatt->second;
+                tagToAssign = (*currentFaceInRegion)->neighbor(j)->info().getTags();
+              }
+            }
+            else {
+              MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(j)->info().getTags());
+              for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
+                if (*currentTag == &universetag)
+                  continue;
+                std::string v = (*currentTag)->getDSName();
+                itatt = priorityMap.find(v);
+                if ( (itatt != priorityMap.end()) && (itatt->second >= priorityOfTagg) ) {
+                  priorityOfTagg = itatt->second;
+                  tagToAssign = *currentTag;
+                }
+              }
+            }
+          }
+        }
+      }
+      std::cout << "Strongest DS: " << tagToAssign->getDSName() << std::endl;
+      
+      //-- 3. re-tag sub-regions of the hole, only assigning a value to those first adjacent to the
+      //--    strongest DS
+      std::map<Triangulation::Face_handle, PolygonHandle*> tempTagged;
+      std::map<Triangulation::Face_handle, PolygonHandle*>::iterator itTempTagged;
+      std::set<Triangulation::Face_handle>::iterator curF = facesInRegion.begin();
+      int reachable = tempTagged.size();
+      while (true) {
+        if (tempTagged.count(*curF) == 0) {
+          for (int i = 0; i < 3; i++) {
+            if ((*curF)->neighbor(i)->info().isHole() == true) {
+              if (!triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(*curF, i))) {
+                if (tempTagged.count((*curF)->neighbor(i)) > 0) {
+  //                tempTagged[*curF] = (*curF)->neighbor(i)->info().getTags();
+                  itTempTagged = tempTagged.find((*curF)->neighbor(i));
+                  tempTagged[*curF] = itTempTagged->second;
+                  std::cout << ">>>taggin1" << std::endl;
+                  break;
+                }
+              }
+            }
+            else { //-- not a hole
+              if ((*curF)->neighbor(i)->info().getTags()->getDSName() == tagToAssign->getDSName()) {
+                tempTagged[*curF] = (*curF)->neighbor(i)->info().getTags();
+                std::cout << ">>>taggin2" << std::endl;
+                break;
+              }
+            }
+          }
+        }
+        curF++;
+        if (curF == facesInRegion.end()) {
+          curF = facesInRegion.begin();
+          if (tempTagged.size() == reachable)
+            break;
+          else
+            reachable = tempTagged.size();
+        }
+      }
+      curF = facesInRegion.begin();
+      std::cout << "NUMBER TAGGED: " << tempTagged.size() << std::endl;
+      while (true) {
+        if (tempTagged.count(*curF) == 0) {
+          for (int i = 0; i < 3; i++) {
+            if ((*curF)->neighbor(i)->info().isHole() == true) {
+              if (tempTagged.count((*curF)->neighbor(i)) > 0) {
+//                tempTagged[*curF] = (*curF)->neighbor(i)->info().getTags();
+                itTempTagged = tempTagged.find((*curF)->neighbor(i));
+                tempTagged[*curF] = itTempTagged->second;
+                std::cout << ">>>taggin3" << std::endl;
+                break;
+              }
+            }
+          }
+        }
+        curF++;
+        if (tempTagged.size() == facesInRegion.size())
+          break;
+        if (curF == facesInRegion.end()) {
+          curF = facesInRegion.begin();
+        }
+      }
+      
+      // Assign the tag to the triangles in the region
+      for (std::map<Triangulation::Face_handle, PolygonHandle*>::iterator it = tempTagged.begin(); it != tempTagged.end(); it++) {
+        facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(it->first, it->second));
+      }
+      std::cout << "NUMBER NEW TAGGED: " << tempTagged.size() << std::endl;
     }
   }
 
