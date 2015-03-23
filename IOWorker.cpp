@@ -1879,7 +1879,7 @@ void IOWorker::tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHa
 	while (!stack.empty()) {
 		Triangulation::Face_handle currentFace = stack.top();
 		stack.pop();
-		currentFace->info().addTag(handle);
+//		currentFace->info().addTag(handle);
 		if (!currentFace->neighbor(0)->info().hasTag(handle) && !currentFace->is_constrained(0)) {
 			currentFace->neighbor(0)->info().addTag(handle);
 			stack.push(currentFace->neighbor(0));
