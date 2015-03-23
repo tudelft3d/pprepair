@@ -59,6 +59,7 @@ unsigned int FaceInfo::numberOfTags() const {
 
 void FaceInfo::addTag(PolygonHandle *handle) {
 	if (tag == NULL) tag = handle;
+  else if (hasTag(handle)) return;
 	else if (tag->isMultiPolygonHandle()) static_cast<MultiPolygonHandle *>(tag)->addHandle(handle);
 	else if (tag != handle) {
 		MultiPolygonHandle *multiTag = new MultiPolygonHandle(tag);
