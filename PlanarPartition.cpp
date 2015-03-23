@@ -474,10 +474,12 @@ void PlanarPartition::removeAllExtentTags() {
 }
 
 void PlanarPartition::tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHandle *handle) {
+  std::cout << "stack: " << stack.size() << std::endl;
 	while (!stack.empty()) {
 		Triangulation::Face_handle currentFace = stack.top();
 		stack.pop();
-//		currentFace->info().addTag(handle);
+    if (!currentFace->info().hasTag(handle))
+      currentFace->info().addTag(handle);
 		if (!currentFace->neighbor(0)->info().hasTag(handle) && !currentFace->is_constrained(0)) {
 			currentFace->neighbor(0)->info().addTag(handle);
 			stack.push(currentFace->neighbor(0));
@@ -1069,12 +1071,11 @@ bool PlanarPartition::repairEM_dataset_2(std::map<std::string, unsigned int> &pr
           std::cout << " -- " << (*curF)->vertex(2)->point().x() << ":" << (*curF)->vertex(2)->point().y() << std::endl;
           std::cout << "ccc: " << (*curF)->is_constrained(0) << (*curF)->is_constrained(1) << (*curF)->is_constrained(2) << std::endl;
           for (int i = 0; i < 3; i++) {
-            
+            std::cout << i << std::endl;
             if ((*curF)->neighbor(i)->info().isHole() == true) {
 //              if (triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(*curF, i)) == false) {
               if ((*curF)->is_constrained(i) == false) {
                 if (tempTagged.count((*curF)->neighbor(i)) > 0) {
-  //                tempTagged[*curF] = (*curF)->neighbor(i)->info().getTags();
                   itTempTagged = tempTagged.find((*curF)->neighbor(i));
                   tempTagged[*curF] = itTempTagged->second;
                   std::string a ("id");
@@ -1084,11 +1085,12 @@ bool PlanarPartition::repairEM_dataset_2(std::map<std::string, unsigned int> &pr
               }
             }
             else { //-- not a hole
+              std::cout << "not a hole: " << (*curF)->neighbor(i)->info().numberOfTags() << std::endl;
               std::cout << (*curF)->neighbor(i)->info().getTags()->getDSName() << std::endl;
               if ((*curF)->neighbor(i)->info().getTags()->getDSName() == tagToAssign->getDSName()) {
                 tempTagged[*curF] = (*curF)->neighbor(i)->info().getTags();
                 std::string a ("id");
-                std::cout << ">>>tag_value: " << (*curF)->neighbor(i)->info().getTags()->getValueAttributeAsString(a)<< std::endl;
+                std::cout << ">>>tag_value: " << (*curF)->neighbor(i)->info().getTags()->getValueAttributeAsString(a) << std::endl;
                 break;
               }
             }
@@ -1110,7 +1112,6 @@ bool PlanarPartition::repairEM_dataset_2(std::map<std::string, unsigned int> &pr
           for (int i = 0; i < 3; i++) {
             if ((*curF)->neighbor(i)->info().isHole() == true) {
               if (tempTagged.count((*curF)->neighbor(i)) > 0) {
-//                tempTagged[*curF] = (*curF)->neighbor(i)->info().getTags();
                 itTempTagged = tempTagged.find((*curF)->neighbor(i));
                 tempTagged[*curF] = itTempTagged->second;
                 std::cout << ">>>taggin3" << std::endl;
@@ -1146,6 +1147,7 @@ bool PlanarPartition::repairEM_dataset_2(std::map<std::string, unsigned int> &pr
     currentFace->first->info().removeAllTags();
     currentFace->first->info().addTag(currentFace->second);
   }
+  std::cout << "%%% DONE %%%" << std::endl;
   return true;
 }
 
