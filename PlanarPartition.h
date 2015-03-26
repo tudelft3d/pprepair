@@ -36,7 +36,7 @@ public:
   bool buildPP(); //-- this is effectively tagTriangulation()
   bool isValid(); //-- are there gaps and/or overlaps?
   
-  bool repair(const std::string &method, bool alsoUniverse = true, const std::string &priority = std::string());
+  bool repair(const std::string &method, bool alsoUniverse = true, const std::string &priority = std::string(), bool addconstraints = true);
 
   bool reconstructPolygons(bool removeVertices = false);
   bool exportPolygonsSHP(std::string &folder);
@@ -75,13 +75,18 @@ private:
   bool repairPL  (const std::string &file, bool alsoUniverse = true); //-- Priority List
 
   void repairSpatialExtent();
+  //-- Edge-Matching prio based on polygon's attribute and prio list
   bool repairEM_attribute(std::map<std::string, unsigned int> &priorityMap,
                          std::string &att,
-                         bool alsoUniverse = true); //-- Edge-Matching prio based on polygon's attribute and prio list
+                         bool alsoUniverse = true);
+  //-- Edge-Matching prio based on DataSet order
   bool repairEM_dataset(std::map<std::string, unsigned int> &priorityMap,
-                       bool alsoUniverse = true); //-- Edge-Matching prio based on DataSet order
-  bool repairEM_dataset_2(std::map<std::string, unsigned int> &priorityMap,
-                        bool alsoUniverse = true); //-- Edge-Matching prio based on DataSet order
+                        bool addconstraints = true,
+                        bool alsoUniverse = true);
+  bool repairEM_dataset_without_constraints(std::map<std::string, unsigned int> &priorityMap,
+                                             bool alsoUniverse = true);
+  bool repairEM_dataset_add_constraints(std::map<std::string, unsigned int> &priorityMap,
+                                        bool alsoUniverse = true);
 
   
   void getProblemRegionsAsOGR(std::vector<OGRGeometry*> &holes, std::vector<OGRGeometry*> &overlaps);
