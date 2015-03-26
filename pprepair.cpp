@@ -134,6 +134,7 @@ int main (int argc, char* const argv[]) {
       }
       else {
         std::cout << "\nValidation:\n\t planar partition is valid." << std::endl;
+        pp.printTriangulationInfo();
       }
     }
     else { //-- repairing
