@@ -71,16 +71,19 @@ int main (int argc, char* const argv[]) {
   MyOutput my;
   cmd.setOutput(&my);
   try {
-    TCLAP::MultiArg<std::string> inputDSs         ("i", "input", "input OGR dataset (this can be used multiple times)", true, "string");
-    TCLAP::ValueArg<std::string> outfiles         ("o", "output", "folder for repaired shapefile(s))", false, "","string");
-    TCLAP::ValueArg<std::string> extent           ("e", "extent", "spatial extent (OGR dataset containing *one* polygon)", false, "", "string");
-    TCLAP::SwitchArg             validation       ("v", "validation", "validation only (gaps and overlaps reported)", false);
-    TCLAP::SwitchArg             skipvalideach    ("",  "skipvalideach", "Skip the individual validation of each input polygon (activated by default)", false);
-    TCLAP::ValueArg<float>       elfslivers       ("",  "elf", "ignore holes that are not slivers (provide minarea)", false, -1.0, "float");
-    TCLAP::ValueArg<std::string> repair           ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
-    TCLAP::ValueArg<std::string> priority         ("p", "priority", "priority list for repairing (methods <PL|EM>)", false, "", "string");
-    TCLAP::ValueArg<std::string> outerrors        ("",  "outerrors", "output errors to shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> outtr            ("",  "outtr", "output triangulation to shapefile", false, "","string");
+    TCLAP::MultiArg<std::string> inputDSs          ("i", "input", "input OGR dataset (this can be used multiple times)", true, "string");
+    TCLAP::ValueArg<std::string> outfiles          ("o", "output", "folder for repaired shapefile(s))", false, "","string");
+    TCLAP::ValueArg<std::string> extent            ("e", "extent", "spatial extent (OGR dataset containing *one* polygon)", false, "", "string");
+    TCLAP::SwitchArg             validation        ("v", "validation", "validation only (gaps and overlaps reported)", false);
+    TCLAP::SwitchArg             skipvalideach     ("",  "skipvalideach", "Skip the individual validation of each input polygon (activated by default)", false);
+    TCLAP::ValueArg<std::string> repair            ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
+    TCLAP::ValueArg<std::string> priority          ("p", "prio", "priority list for repairing (methods <PL|EM>)", false, "", "string");
+    TCLAP::SwitchArg             noextraconstraint ("",  "noextraconstraint", "do not insert new constraints when repairing with EM", false);
+    
+    TCLAP::ValueArg<std::string> outerrors         ("",  "outerrors", "output errors to shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outtr             ("",  "outtr", "output triangulation to shapefile", false, "","string");
+    
+    TCLAP::ValueArg<float>       elfslivers        ("",  "elf", "ignore holes that are not slivers (provide minarea)", false, -1.0, "float");
 
     cmd.add(elfslivers);
     cmd.add(outerrors);
@@ -88,6 +91,7 @@ int main (int argc, char* const argv[]) {
     cmd.add(extent);
     cmd.add(priority);
     cmd.add(skipvalideach);
+    cmd.add(noextraconstraint);
     cmd.xorAdd(validation, repair);
     cmd.add(outfiles);
     cmd.add(inputDSs);
@@ -138,14 +142,16 @@ int main (int argc, char* const argv[]) {
       if (outerrors.getValue() != "") {
         pp.exportProblemRegionsAsSHP(outerrors.getValue());
       }
-
+      
       if ( (repair.getValue() == "PL") || (repair.getValue() == "EM") ){
         if (priority.getValue() == "") {
           std::cout << "Priority file must be provided." << std::endl;
           throw false;
         }
         else {
-          pp.repair(repair.getValue(), true, priority.getValue());
+          if (pp.repair(repair.getValue(), true, priority.getValue(), !noextraconstraint.getValue()) == false) {
+            throw false;
+          }
         }
       }
       else {

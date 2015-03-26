@@ -51,6 +51,17 @@ bool FaceInfo::hasOneTag() const {
 	return true;
 }
 
+bool FaceInfo::isHole() const {
+  return hasNoTags();
+}
+
+bool FaceInfo::isOverlap() const {
+  if (numberOfTags() > 1)
+    return true;
+  else
+    return false;
+}
+
 unsigned int FaceInfo::numberOfTags() const {
 	if (tag == NULL)
     return 0;
@@ -60,8 +71,10 @@ unsigned int FaceInfo::numberOfTags() const {
 }
 
 void FaceInfo::addTag(PolygonHandle *handle) {
-	if (tag == NULL) tag = handle;
-	else if (tag->isMultiPolygonHandle()) static_cast<MultiPolygonHandle *>(tag)->addHandle(handle);
+	if (tag == NULL)
+    tag = handle;
+	else if (tag->isMultiPolygonHandle())
+    static_cast<MultiPolygonHandle *>(tag)->addHandle(handle);
 	else if (tag != handle) {
 		MultiPolygonHandle *multiTag = new MultiPolygonHandle(tag);
 		multiTag->addHandle(handle);

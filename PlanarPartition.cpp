@@ -124,7 +124,7 @@ bool PlanarPartition::addOGRdataset(std::string &file, bool skipvalideach) {
     std::cout << "\tDone, all polygons are valid." << std::endl;
   }
   else {
-    std::cout << "\t->Individual validation of polygons skipped (at your own risk!)" << std::endl;
+    std::cout << "\t->Individual validation of polygons skipped (AT YOUR OWN RISK!)" << std::endl;
   }
   if (addFeatures(lsInputFeatures) == false)
     return false;
@@ -165,17 +165,19 @@ bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeat
   bool allvalid = true;
   int idno = 0;
   for (std::vector<OGRFeature*>::iterator it = lsOGRFeatures.begin() ; it != lsOGRFeatures.end(); ++it) {
-    std::cout << "\tPolygon #" << idno << std::endl;
     switch((*it)->GetGeometryRef()->getGeometryType()) {
       case wkbPolygon:
       case wkbPolygon25D: {
         OGRPolygon *geometry = (OGRPolygon *)(*it)->GetGeometryRef();
         if (geometry->IsValid() == false) {
           allvalid = false;
+          std::cout << "--> Polygon #" << idno << std::endl;
         }
         else {
-          if (duplicateVerticesInPolygon(geometry) == false)
+          if (duplicateVerticesInPolygon(geometry) == false) {
             allvalid = false;
+            std::cout << "--> Polygon #" << idno << std::endl;
+          }
         }
         break;
       }
@@ -186,10 +188,12 @@ bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeat
           OGRPolygon *p = (OGRPolygon *)geometry->getGeometryRef(cur);
           if (p->IsValid() == false) {
             allvalid = false;
+            std::cout << "--> Polygon #" << idno << std::endl;
           }
           else {
             if (duplicateVerticesInPolygon(p) == false) {
               allvalid = false;
+              std::cout << "--> Polygon #" << idno << std::endl;
             }
           }
         }
@@ -361,8 +365,6 @@ bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> 
 
 
 
-
-
 bool PlanarPartition::buildPP() {
   if (state < TRIANGULATED) {
     std::cout << "No triangulation to tag!" << std::endl;
@@ -386,8 +388,10 @@ bool PlanarPartition::buildPP() {
       previousVertex = triangulation.vertices_in_constraint_begin(edgesToTag[currentPolygon].first[currentEdge],
                                                                   edgesToTag[currentPolygon].first[(currentEdge+1)%edgesToTag[currentPolygon].first.size()]);
       // Check if the returned order is the same
-      if ((*previousVertex)->point() == edgesToTag[currentPolygon].first[currentEdge]->point()) sameOrder = true;
-      else sameOrder = false;
+      if ((*previousVertex)->point() == edgesToTag[currentPolygon].first[currentEdge]->point())
+        sameOrder = true;
+      else
+        sameOrder = false;
       currentVertex = previousVertex;
       ++currentVertex;
       while (currentVertex != triangulation.vertices_in_constraint_end(edgesToTag[currentPolygon].first[currentEdge],
@@ -411,7 +415,6 @@ bool PlanarPartition::buildPP() {
     edgesToTag[currentPolygon].first.clear();
     
     // Inner boundaries
-    // Should not be done unless we can ensure that holes are inside polygons, but keep it in mind...
     for (unsigned int currentRing = 0; currentRing < edgesToTag[currentPolygon].second.size(); ++currentRing) {
       for (unsigned int currentEdge = 0; currentEdge < edgesToTag[currentPolygon].second[currentRing].size(); ++currentEdge) {
         previousVertex = triangulation.vertices_in_constraint_begin(edgesToTag[currentPolygon].second[currentRing].at(currentEdge),
@@ -474,14 +477,17 @@ void PlanarPartition::tagStack(std::stack<Triangulation::Face_handle> &stack, Po
 	while (!stack.empty()) {
 		Triangulation::Face_handle currentFace = stack.top();
 		stack.pop();
-		currentFace->info().addTag(handle);
+    if (!currentFace->info().hasTag(handle))
+      currentFace->info().addTag(handle);
 		if (!currentFace->neighbor(0)->info().hasTag(handle) && !currentFace->is_constrained(0)) {
 			currentFace->neighbor(0)->info().addTag(handle);
 			stack.push(currentFace->neighbor(0));
-		} if (!currentFace->neighbor(1)->info().hasTag(handle) && !currentFace->is_constrained(1)) {
+		}
+    if (!currentFace->neighbor(1)->info().hasTag(handle) && !currentFace->is_constrained(1)) {
 			currentFace->neighbor(1)->info().addTag(handle);
 			stack.push(currentFace->neighbor(1));
-		} if (!currentFace->neighbor(2)->info().hasTag(handle) && !currentFace->is_constrained(2)) {
+		}
+    if (!currentFace->neighbor(2)->info().hasTag(handle) && !currentFace->is_constrained(2)) {
 			currentFace->neighbor(2)->info().addTag(handle);
 			stack.push(currentFace->neighbor(2));
 		}
@@ -837,7 +843,14 @@ bool PlanarPartition::repairEM_attribute(std::map<std::string, unsigned int> &pr
   return true;
 }
 
-bool PlanarPartition::repairEM_dataset(std::map<std::string, unsigned int> &priorityMap, bool alsoUniverse) {
+bool PlanarPartition::repairEM_dataset(std::map<std::string, unsigned int> &priorityMap, bool addconstraints, bool alsoUniverse) {
+  if (addconstraints == true)
+    return repairEM_dataset_add_constraints(priorityMap, alsoUniverse);
+  else
+    return repairEM_dataset_without_constraints(priorityMap, alsoUniverse);
+}
+
+bool PlanarPartition::repairEM_dataset_without_constraints(std::map<std::string, unsigned int> &priorityMap, bool alsoUniverse) {
   // Use a temporary vector to make it deterministic and order independent
   std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
   std::set<Triangulation::Face_handle> processedFaces;
@@ -853,14 +866,16 @@ bool PlanarPartition::repairEM_dataset(std::map<std::string, unsigned int> &prio
         facesToProcess.pop();
         processedFaces.insert(currentFaceInStack);
         if (!currentFaceInStack->neighbor(0)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(0)) &&
-            !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 0))) {
           facesInRegion.insert(currentFaceInStack->neighbor(0));
           facesToProcess.push(currentFaceInStack->neighbor(0));
-        } if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
+        }
+        if (!currentFaceInStack->neighbor(1)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(1)) &&
               !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 1))) {
           facesInRegion.insert(currentFaceInStack->neighbor(1));
           facesToProcess.push(currentFaceInStack->neighbor(1));
-        } if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
+        }
+        if (!currentFaceInStack->neighbor(2)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(2)) &&
               !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, 2))) {
           facesInRegion.insert(currentFaceInStack->neighbor(2));
           facesToProcess.push(currentFaceInStack->neighbor(2));
@@ -945,6 +960,198 @@ bool PlanarPartition::repairEM_dataset(std::map<std::string, unsigned int> &prio
   return true;
 }
 
+
+bool PlanarPartition::repairEM_dataset_add_constraints(std::map<std::string, unsigned int> &priorityMap, bool alsoUniverse) {
+  
+  add_extra_constraints();
+  
+  // Use a temporary vector to make it deterministic and order independent
+  std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
+  std::set<Triangulation::Face_handle> processedFaces;
+  for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
+//-- OVERLAPS
+    if (currentFace->info().isOverlap() && !processedFaces.count(currentFace)) {
+      // Expand this triangle into a complete region
+      std::set<Triangulation::Face_handle> facesInRegion;
+      facesInRegion.insert(currentFace);
+      std::stack<Triangulation::Face_handle> facesToProcess;
+      facesToProcess.push(currentFace);
+      while (facesToProcess.size() > 0) {
+        Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
+        facesToProcess.pop();
+        processedFaces.insert(currentFaceInStack);
+        for (int i = 0; i < 3; i++) {
+          if (!currentFaceInStack->neighbor(i)->info().hasOneTag() && !facesInRegion.count(currentFaceInStack->neighbor(i)) &&
+              !triangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(currentFaceInStack, i))) {
+            facesInRegion.insert(currentFaceInStack->neighbor(i));
+            facesToProcess.push(currentFaceInStack->neighbor(i));
+          }
+        }
+      }
+      // Find the tag with the highest priority
+      PolygonHandle *tagToAssign = NULL;
+      unsigned int priorityOfTago = UINT_MAX;
+      std::map<std::string, unsigned int>::const_iterator itatt;
+      for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+        MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->info().getTags());
+        for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
+          std::string v = (*currentTag)->getDSName();
+          itatt = priorityMap.find(v);
+          if ( (itatt != priorityMap.end()) && (itatt->second < priorityOfTago) ) {
+            priorityOfTago = itatt->second;
+            tagToAssign = *currentTag;
+          }
+        }
+      }
+      // Assign the tag to the triangles in the region
+      for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+        facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
+      }
+    }
+//-- HOLES
+    else if (currentFace->info().isHole() && !processedFaces.count(currentFace)) {
+//      std::cout << "--- HOLE!" << std::endl;
+      // 1. collect *all* triangles in the hole (and ignore constraints)
+      std::set<Triangulation::Face_handle> facesInRegion;
+      facesInRegion.insert(currentFace);
+      std::stack<Triangulation::Face_handle> facesToProcess;
+      facesToProcess.push(currentFace);
+      while (facesToProcess.size() > 0) {
+        Triangulation::Face_handle currentFaceInStack = facesToProcess.top();
+        facesToProcess.pop();
+        processedFaces.insert(currentFaceInStack);
+        for (int i = 0; i < 3; i++) {
+          if (currentFaceInStack->neighbor(i)->info().isHole() && !facesInRegion.count(currentFaceInStack->neighbor(i)) ) {
+            facesInRegion.insert(currentFaceInStack->neighbor(i));
+            facesToProcess.push(currentFaceInStack->neighbor(i));
+          }
+        }
+      }
+//      std::cout << "# tr: " << facesInRegion.size() << std::endl;
+      
+      //-- 2. get all neighbouring DS and pick the strongest
+      PolygonHandle *tagToAssign = NULL;
+      unsigned int priorityOfTagg = 0;
+      std::map<std::string, unsigned int>::const_iterator itatt;
+      for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+        for (int j = 0; j <= 2; j++) {
+          if (!(*currentFaceInRegion)->neighbor(j)->info().isHole()) {
+            if ((*currentFaceInRegion)->neighbor(j)->info().hasOneTag() && (*currentFaceInRegion)->neighbor(j)->info().getTags() != &universetag) {
+              std::string v = (*currentFaceInRegion)->neighbor(j)->info().getTags()->getDSName();
+              itatt = priorityMap.find(v);
+              if ( (itatt != priorityMap.end()) && (itatt->second >= priorityOfTagg) ) {
+                priorityOfTagg = itatt->second;
+                tagToAssign = (*currentFaceInRegion)->neighbor(j)->info().getTags();
+              }
+            }
+            else {
+              MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*currentFaceInRegion)->neighbor(j)->info().getTags());
+              for (std::list<PolygonHandle *>::const_iterator currentTag = handle->getHandles()->begin(); currentTag != handle->getHandles()->end(); ++currentTag) {
+                if (*currentTag == &universetag)
+                  continue;
+                std::string v = (*currentTag)->getDSName();
+                itatt = priorityMap.find(v);
+                if ( (itatt != priorityMap.end()) && (itatt->second >= priorityOfTagg) ) {
+                  priorityOfTagg = itatt->second;
+                  tagToAssign = *currentTag;
+                }
+              }
+            }
+          }
+        }
+      }
+//      std::cout << "Strongest DS: " << tagToAssign->getDSName() << std::endl;
+      
+      //-- 3. re-tag sub-regions of the hole, only assigning a value to those first adjacent to the
+      //--    strongest DS
+      std::map<Triangulation::Face_handle, PolygonHandle*> tempTagged;
+      std::map<Triangulation::Face_handle, PolygonHandle*>::iterator itTempTagged;
+      std::set<Triangulation::Face_handle>::iterator curF = facesInRegion.begin();
+      int reachable = tempTagged.size();
+      while (true) {
+        if (tempTagged.count(*curF) == 0) {
+//          std::cout << "===" << std::endl;
+//          std::cout << " -- " << (*curF)->vertex(0)->point().x() << ":" << (*curF)->vertex(0)->point().y() << std::endl;
+//          std::cout << " -- " << (*curF)->vertex(1)->point().x() << ":" << (*curF)->vertex(1)->point().y() << std::endl;
+//          std::cout << " -- " << (*curF)->vertex(2)->point().x() << ":" << (*curF)->vertex(2)->point().y() << std::endl;
+//          std::cout << "ccc: " << (*curF)->is_constrained(0) << (*curF)->is_constrained(1) << (*curF)->is_constrained(2) << std::endl;
+          for (int i = 0; i < 3; i++) {
+            if ((*curF)->neighbor(i)->info().isHole() == true) {
+              if ((*curF)->is_constrained(i) == false) {
+                if (tempTagged.count((*curF)->neighbor(i)) > 0) {
+                  itTempTagged = tempTagged.find((*curF)->neighbor(i));
+                  tempTagged[*curF] = itTempTagged->second;
+//                  std::string a ("id");
+//                  std::cout << ">>>tag_hole: " << (itTempTagged->second)->getValueAttributeAsString(a) << std::endl;
+                  break;
+                }
+              }
+            }
+            else { //-- not a hole
+//              std::cout << "not a hole: " << (*curF)->neighbor(i)->info().numberOfTags() << std::endl;
+//              std::cout << (*curF)->neighbor(i)->info().getTags()->getDSName() << std::endl;
+              if ((*curF)->neighbor(i)->info().getTags()->getDSName() == tagToAssign->getDSName()) {
+                tempTagged[*curF] = (*curF)->neighbor(i)->info().getTags();
+//                std::string a ("id");
+//                std::cout << ">>>tag_value: " << (*curF)->neighbor(i)->info().getTags()->getValueAttributeAsString(a) << std::endl;
+                break;
+              }
+            }
+          }
+        }
+        curF++;
+        if (curF == facesInRegion.end()) {
+          curF = facesInRegion.begin();
+          if (tempTagged.size() == reachable)
+            break;
+          else
+            reachable = tempTagged.size();
+        }
+      }
+      curF = facesInRegion.begin();
+//      std::cout << "NUMBER TAGGED: " << tempTagged.size() << std::endl;
+      while (true) {
+        if (tempTagged.count(*curF) == 0) {
+          for (int i = 0; i < 3; i++) {
+            if ((*curF)->neighbor(i)->info().isHole() == true) {
+              if (tempTagged.count((*curF)->neighbor(i)) > 0) {
+                itTempTagged = tempTagged.find((*curF)->neighbor(i));
+                tempTagged[*curF] = itTempTagged->second;
+//                std::cout << ">>>taggin3" << std::endl;
+                break;
+              }
+            }
+          }
+        }
+        curF++;
+        if (tempTagged.size() == facesInRegion.size())
+          break;
+        if (curF == facesInRegion.end()) {
+          curF = facesInRegion.begin();
+        }
+      }
+      
+      // Assign the tag to the triangles in the region
+      for (std::map<Triangulation::Face_handle, PolygonHandle*>::iterator it = tempTagged.begin(); it != tempTagged.end(); it++) {
+        facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(it->first, it->second));
+//        std::string a ("id");
+//        std::cout << ">>>" << (it->second)->getDSName() << "--" << (it->second)->getValueAttributeAsString(a) << std::endl;
+      }
+//      std::cout << "NUMBER NEW TAGGED: " << tempTagged.size() << std::endl;
+    }
+  }
+
+  // Re-tag faces in the vector
+  for (std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> >::iterator currentFace = facesToRepair.begin();
+       currentFace != facesToRepair.end();
+       ++currentFace) {
+    currentFace->first->info().removeAllTags();
+    currentFace->first->info().addTag(currentFace->second);
+  }
+  return true;
+}
+
+
 bool PlanarPartition::repairRN(bool alsoUniverse) {
 	bool repaired = true;
   // Use a temporary vector to make it deterministic and order independent
@@ -1013,7 +1220,7 @@ bool PlanarPartition::repairRN(bool alsoUniverse) {
 
 
 
-bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const std::string &priofile) {
+bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const std::string &priofile, bool addconstraints) {
 	if (state < TAGGED) {
 		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
 		return false;
@@ -1046,10 +1253,13 @@ bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const
     std::cout << "Repairing with edge-matching method...";
     std::map<std::string, unsigned int> priorityMap;
     std::string attr;
-    getPriorityList(priofile, priorityMap, attr);
+    if (getPriorityList(priofile, priorityMap, attr) == false) {
+      return false;
+    }
     if (attr == "datasets") {
       std::cout << "datasets." << std::endl;
-      repaired = repairEM_dataset(priorityMap, alsoUniverse);
+
+      repaired = repairEM_dataset(priorityMap, addconstraints, alsoUniverse);
     }
     else {
       std::cout << "with attributes." << std::endl;
@@ -1223,6 +1433,75 @@ bool PlanarPartition::isValid() {
     }
   }
   state = REPAIRED;
+  return true;
+}
+
+
+bool PlanarPartition::add_extra_constraints() {
+  std::cout << "Adding extra constraints in holes to improve edge-matching results" << std::endl;
+//-- 1. find and store vertices with d>2; incident to hole; incident to 1 dataset
+  std::list<Triangulation::Vertex_handle> vs_hole;
+  Triangulation::Finite_vertices_iterator v = triangulation.finite_vertices_begin();
+  while (v != triangulation.finite_vertices_end()) {
+    Triangulation::Face_circulator ff = triangulation.incident_faces(v), curF = ff;
+    int noconstraints = 0;
+    std::set<std::string> datasets;
+    bool holeinstar = false;
+    bool infinite = false;
+    do {
+      int i = curF->index(v);
+      if (curF->is_constrained(curF->ccw(i)) == true)
+        noconstraints++;
+      if (curF->info().isHole() == true)
+        holeinstar = true;
+      if (triangulation.is_infinite(curF) == true)
+        infinite = true;
+      if ( (curF->info().hasOneTag() == true) && (triangulation.is_infinite(curF) == false) && (curF->info().getTags() != &universetag) )
+          datasets.insert(curF->info().getTags()->getDSName());
+      curF++;
+    } while (curF != ff);
+    if ( (infinite == false) && (noconstraints > 2) && (datasets.size() == 1) ) {
+//    if ( (infinite == false) && (noconstraints > 2) ) {
+      if (holeinstar == true)
+        vs_hole.push_back(v);
+    }
+    v++;
+  }
+//  int j = 1;
+//  std::cout << "---SUMMARY hole-vertices---" << std::endl;
+//  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
+//    std::cout << j << " -- " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+//    j++;
+//  }
+//  
+//-- 2. add the constraint in hole being the shortest
+//  std::cout << "CONSTRAINTS ADDED" << std::endl;
+  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
+    Triangulation::Face_circulator ff = triangulation.incident_faces(*curv), curF = ff;
+    //-- collect all edges
+    K::FT edgelength = 1e6;
+    Triangulation::Face_handle thef;
+    do {
+      if (curF->info().isHole() == true) {
+        int i = curF->index(*curv);
+        if (curF->neighbor(curF->ccw(i))->info().isHole() == true) {
+          if (CGAL::squared_distance((*curv)->point(), (curF->vertex(curF->cw(i)))->point()) < edgelength) {
+            edgelength = CGAL::squared_distance((*curv)->point(), (curF->vertex(curF->cw(i)))->point());
+            thef = curF;
+          }
+        }
+      }
+      curF++;
+    } while (curF != ff);
+    if (thef != NULL) {
+      int i = thef->index(*curv);
+      triangulation.insert_constraint(*curv, thef->vertex(thef->cw(i)));
+//      std::cout << "CONSTRAINED EDGE ADDED:" << std::endl;
+//      std::cout << " A: " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+//      std::cout << " B: " << (thef->vertex(thef->cw(i)))->point().x() << ":" << (thef->vertex(thef->cw(i)))->point().y() << std::endl;
+//      std::cout << thef->is_constrained(thef->ccw(i)) << std::endl;
+    }
+  }
   return true;
 }
 
