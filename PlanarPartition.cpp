@@ -1476,11 +1476,13 @@ bool PlanarPartition::add_extra_constraints() {
 //  
 //-- 2. add the constraint in hole being the shortest
 //  std::cout << "CONSTRAINTS ADDED" << std::endl;
+  Triangulation::Face_handle thef;
+  bool facefound = false;
   for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
     Triangulation::Face_circulator ff = triangulation.incident_faces(*curv), curF = ff;
     //-- collect all edges
     K::FT edgelength = 1e6;
-    Triangulation::Face_handle thef;
+    facefound = false;
     do {
       if (curF->info().isHole() == true) {
         int i = curF->index(*curv);
@@ -1488,12 +1490,13 @@ bool PlanarPartition::add_extra_constraints() {
           if (CGAL::squared_distance((*curv)->point(), (curF->vertex(curF->cw(i)))->point()) < edgelength) {
             edgelength = CGAL::squared_distance((*curv)->point(), (curF->vertex(curF->cw(i)))->point());
             thef = curF;
+            facefound = true;
           }
         }
       }
       curF++;
     } while (curF != ff);
-    if (thef != NULL) {
+    if (facefound == true) {
       int i = thef->index(*curv);
       triangulation.insert_constraint(*curv, thef->vertex(thef->cw(i)));
 //      std::cout << "CONSTRAINED EDGE ADDED:" << std::endl;
