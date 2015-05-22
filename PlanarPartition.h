@@ -42,6 +42,8 @@ public:
   bool exportPolygonsSHP(std::string &folder);
   bool exportTriangulation(std::string &outfile);
   
+
+  void getListOverlappingPolygons(std::ostream &ostr = std::cout);
   void printTriangulationInfo(std::ostream &ostr = std::cout);
   void printProblemRegions(std::ostream &ostr = std::cout);
   void reportProblemRegions(std::ostream &ostr = std::cout, double thinness = -1.0, double minSliverArea = -1.0);

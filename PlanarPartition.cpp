@@ -1943,6 +1943,39 @@ void PlanarPartition::getProblemRegionsAsOGR(std::vector<OGRGeometry*> &holes, s
   }
 }
 
+void PlanarPartition::getListOverlappingPolygons(std::ostream &ostr) {
+  std::map<int, std::set<int> > overlaps;
+  for (Triangulation::Finite_faces_iterator curF = triangulation.finite_faces_begin(); curF != triangulation.finite_faces_end(); ++curF) {
+    if ((*curF).info().isOverlap()) {
+      std::list<int> tmp;
+      MultiPolygonHandle *handle = static_cast<MultiPolygonHandle *>((*curF).info().getTags());
+      for (std::list<PolygonHandle *>::const_iterator curtag = handle->getHandles()->begin(); curtag != handle->getHandles()->end(); ++curtag) {
+        if (*curtag == &universetag)
+          continue;
+        int fid = (*curtag)->getFID();
+        tmp.push_back(fid);
+      }
+      for (std::list<int>::iterator i = tmp.begin(); i != tmp.end(); i++) {
+        auto search = overlaps.find(*i);
+        if (search != overlaps.end()) {
+          (search->second).insert(tmp.begin(), tmp.end());
+        }
+        else {
+          std::set<int> t(tmp.begin(), tmp.end());
+          overlaps[*i] = t;
+        }
+      }
+    }
+  }
+  for (std::map<int, std::set<int> >::iterator i = overlaps.begin(); i != overlaps.end(); i++) {
+    ostr << i->first << ",";
+    for (std::set<int>::iterator j = (i->second).begin(); j != (i->second).end(); j++) {
+      if (*j != i->first)
+        ostr << *j << ",";
+    }
+    ostr << std::endl;
+  }
+}
 
 void PlanarPartition::printProblemRegions(std::ostream &ostr) {
   std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
