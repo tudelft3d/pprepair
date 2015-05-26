@@ -20,6 +20,8 @@
  */
 
 #include "PlanarPartition.h"
+#include <fstream>
+#include <iostream>
 #include <tclap/CmdLine.h>
 
 class MyOutput : public TCLAP::StdOutput
@@ -80,12 +82,14 @@ int main (int argc, char* const argv[]) {
     TCLAP::ValueArg<std::string> priority          ("p", "prio", "priority list for repairing (methods <PL|EM>)", false, "", "string");
     TCLAP::SwitchArg             noextraconstraint ("",  "noextraconstraint", "do not insert new constraints when repairing with EM", false);
     
-    TCLAP::ValueArg<std::string> outerrors         ("",  "outerrors", "output errors to shapefile", false, "","string");
-    TCLAP::ValueArg<std::string> outtr             ("",  "outtr", "output triangulation to shapefile", false, "","string");
+    TCLAP::ValueArg<std::string> outerrors         ("",  "outerrors", "output errors (SHP file)", false, "","string");
+    TCLAP::ValueArg<std::string> outerrorslist     ("",  "outerrorslist", "output list of errors (CSV file)", false, "", "string");
+    TCLAP::ValueArg<std::string> outtr             ("",  "outtr", "output triangulation (SHP file)", false, "","string");
     
     TCLAP::ValueArg<float>       elfslivers        ("",  "elf", "ignore holes that are not slivers (provide minarea)", false, -1.0, "float");
 
     cmd.add(elfslivers);
+    cmd.add(outerrorslist);
     cmd.add(outerrors);
     cmd.add(outtr);
     cmd.add(extent);
@@ -123,6 +127,13 @@ int main (int argc, char* const argv[]) {
         std::cout << "\nValidation:\n\t planar partition is NOT valid.\n" << std::endl;
         pp.printTriangulationInfo();
         pp.printProblemRegions();
+        if (outerrorslist.getValue() != "") {
+          std::ofstream outfile;
+          outfile.open((outerrorslist.getValue()).c_str());
+          pp.getListOverlappingPolygons(outfile);
+          outfile.close();
+          std::cout << std::endl << "CSV file with overlapping polygons written to " << outerrorslist.getValue() << std::endl;
+        }
         if (outerrors.getValue() != "") {
           if (elfslivers.getValue() == -1.0) {
             pp.exportProblemRegionsAsSHP(outerrors.getValue());

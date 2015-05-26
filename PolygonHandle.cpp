@@ -42,9 +42,14 @@ std::string PolygonHandle::getValueAttributeAsString(std::string &attr) {
     return feature->GetFieldAsString(i);
 }
 
+int PolygonHandle::getFID() {
+  return feature->GetFID();
+}
+
 std::string PolygonHandle::getDSName() {
   return feature->GetDefnRef()->GetName();
 }
+
 
 const bool PolygonHandle::isMultiPolygonHandle() {
 	return false;
