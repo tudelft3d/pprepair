@@ -843,9 +843,9 @@ bool PlanarPartition::repairEM_attribute(std::map<std::string, unsigned int> &pr
   return true;
 }
 
-bool PlanarPartition::repairEM_dataset(std::map<std::string, unsigned int> &priorityMap, bool addconstraints, bool alsoUniverse) {
-  if (addconstraints == true)
-    return repairEM_dataset_add_constraints(priorityMap, alsoUniverse);
+bool PlanarPartition::repairEM_dataset(std::map<std::string, unsigned int> &priorityMap, double splitregions, bool alsoUniverse) {
+  if (splitregions > 0)
+    return repairEM_dataset_add_constraints(priorityMap, splitregions, alsoUniverse);
   else
     return repairEM_dataset_without_constraints(priorityMap, alsoUniverse);
 }
@@ -961,9 +961,9 @@ bool PlanarPartition::repairEM_dataset_without_constraints(std::map<std::string,
 }
 
 
-bool PlanarPartition::repairEM_dataset_add_constraints(std::map<std::string, unsigned int> &priorityMap, bool alsoUniverse) {
+bool PlanarPartition::repairEM_dataset_add_constraints(std::map<std::string, unsigned int> &priorityMap, double splitregions, bool alsoUniverse) {
   
-  add_extra_constraints();
+  add_extra_constraints_in_gaps(splitregions);
   
   // Use a temporary vector to make it deterministic and order independent
   std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> > facesToRepair;
@@ -1220,7 +1220,7 @@ bool PlanarPartition::repairRN(bool alsoUniverse) {
 
 
 
-bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const std::string &priofile, bool addconstraints) {
+bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const std::string &priofile, double splitregions) {
 	if (state < TAGGED) {
 		std::cout << "Triangulation not yet tagged. Cannot repair!" << std::endl;
 		return false;
@@ -1259,7 +1259,7 @@ bool PlanarPartition::repair(const std::string &method, bool alsoUniverse, const
     if (attr == "datasets") {
       std::cout << "datasets." << std::endl;
 
-      repaired = repairEM_dataset(priorityMap, addconstraints, alsoUniverse);
+      repaired = repairEM_dataset(priorityMap, splitregions, alsoUniverse);
     }
     else {
       std::cout << "with attributes." << std::endl;
@@ -1437,15 +1437,14 @@ bool PlanarPartition::isValid() {
 }
 
 
-bool PlanarPartition::add_extra_constraints() {
-  std::cout << "Adding extra constraints in holes to improve edge-matching results" << std::endl;
-//-- 1. find and store vertices with d>2; incident to hole; incident to 1 dataset
-  std::list<Triangulation::Vertex_handle> vs_hole;
+bool PlanarPartition::add_extra_constraints_in_gaps(double splitregions) {
+  std::cout << "Adding extra constraints (max length = " << splitregions << ") in gaps to improve edge-matching results" << std::endl;
+//-- 1. find and store split vertices with d>2 (incident to hole; incident to 1 dataset)
+  std::set<Triangulation::Vertex_handle> vs_hole;
   Triangulation::Finite_vertices_iterator v = triangulation.finite_vertices_begin();
   while (v != triangulation.finite_vertices_end()) {
     Triangulation::Face_circulator ff = triangulation.incident_faces(v), curF = ff;
     int noconstraints = 0;
-    std::set<std::string> datasets;
     bool holeinstar = false;
     bool infinite = false;
     do {
@@ -1456,53 +1455,80 @@ bool PlanarPartition::add_extra_constraints() {
         holeinstar = true;
       if (triangulation.is_infinite(curF) == true)
         infinite = true;
-      if ( (curF->info().hasOneTag() == true) && (triangulation.is_infinite(curF) == false) && (curF->info().getTags() != &universetag) )
-          datasets.insert(curF->info().getTags()->getDSName());
       curF++;
     } while (curF != ff);
-    if ( (infinite == false) && (noconstraints > 2) && (datasets.size() == 1) ) {
-//    if ( (infinite == false) && (noconstraints > 2) ) {
-      if (holeinstar == true)
-        vs_hole.push_back(v);
+    if ( (infinite == false) && (noconstraints > 2) && (holeinstar == true) ) {
+        vs_hole.insert(v);
     }
     v++;
   }
-//  int j = 1;
-//  std::cout << "---SUMMARY hole-vertices---" << std::endl;
-//  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
-//    std::cout << j << " -- " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
-//    j++;
-//  }
-//  
+  int j = 1;
+  std::cout << "---SUMMARY hole-vertices---" << std::endl;
+  for (std::set<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
+    std::cout << j << " -- " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+    j++;
+  }
+  
 //-- 2. add the constraint in hole being the shortest
 //  std::cout << "CONSTRAINTS ADDED" << std::endl;
   Triangulation::Face_handle thef;
-  bool facefound = false;
-  for (std::list<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
+  bool found;
+  for (std::set<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
     Triangulation::Face_circulator ff = triangulation.incident_faces(*curv), curF = ff;
     //-- collect all edges
     K::FT edgelength = 1e6;
-    facefound = false;
+    found = false;
+    //-- find the shortest edge with splitvertex
     do {
       if (curF->info().isHole() == true) {
         int i = curF->index(*curv);
+        Triangulation::Vertex_handle vend = curF->vertex(curF->cw(i));
         if (curF->neighbor(curF->ccw(i))->info().isHole() == true) {
-          if (CGAL::squared_distance((*curv)->point(), (curF->vertex(curF->cw(i)))->point()) < edgelength) {
-            edgelength = CGAL::squared_distance((*curv)->point(), (curF->vertex(curF->cw(i)))->point());
-            thef = curF;
-            facefound = true;
+          if (vs_hole.count(vend) == 1) {
+            K::FT d = CGAL::squared_distance((*curv)->point(), vend->point());
+            if ( (d < edgelength) && (d < (splitregions*splitregions)) ) {
+                edgelength = d;
+                thef = curF;
+                found = true;
+            }
           }
         }
       }
       curF++;
     } while (curF != ff);
-    if (facefound == true) {
+    if (found == true) {
       int i = thef->index(*curv);
       triangulation.insert_constraint(*curv, thef->vertex(thef->cw(i)));
-//      std::cout << "CONSTRAINED EDGE ADDED:" << std::endl;
-//      std::cout << " A: " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
-//      std::cout << " B: " << (thef->vertex(thef->cw(i)))->point().x() << ":" << (thef->vertex(thef->cw(i)))->point().y() << std::endl;
-//      std::cout << thef->is_constrained(thef->ccw(i)) << std::endl;
+      std::cout << "CONSTRAINED EDGE (SPLITVERTEX) ADDED:" << std::endl;
+      std::cout << " A: " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+      std::cout << " B: " << (thef->vertex(thef->cw(i)))->point().x() << ":" << (thef->vertex(thef->cw(i)))->point().y() << std::endl;
+    }
+    else {
+      edgelength = 1e6;
+      found = false;
+      //-- find the shortest edge WITHOUT splitvertex
+      do {
+        if (curF->info().isHole() == true) {
+          int i = curF->index(*curv);
+          Triangulation::Vertex_handle vend = curF->vertex(curF->cw(i));
+          if (curF->neighbor(curF->ccw(i))->info().isHole() == true) {
+            K::FT d = CGAL::squared_distance((*curv)->point(), vend->point());
+            if ( (d < edgelength) && (d < (splitregions*splitregions)) ) {
+              edgelength = d;
+              thef = curF;
+              found = true;
+            }
+          }
+        }
+        curF++;
+      } while (curF != ff);
+      if (found == true) {
+        int i = thef->index(*curv);
+        triangulation.insert_constraint(*curv, thef->vertex(thef->cw(i)));
+        std::cout << "CONSTRAINED EDGE ADDED:" << std::endl;
+        std::cout << " A: " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+        std::cout << " B: " << (thef->vertex(thef->cw(i)))->point().x() << ":" << (thef->vertex(thef->cw(i)))->point().y() << std::endl;
+      }
     }
   }
   return true;
