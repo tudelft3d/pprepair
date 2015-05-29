@@ -970,7 +970,7 @@ bool PlanarPartition::repairEM_dataset_add_constraints(std::map<std::string, uns
   std::set<Triangulation::Face_handle> processedFaces;
   bool triedthemall = false;
   while (isValid() == false) {
-    std::cout << "=====start round=====" << std::endl;
+//    std::cout << "=====start round=====" << std::endl;
     facesToRepair.clear();
     processedFaces.clear();
     for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
@@ -1002,7 +1002,7 @@ bool PlanarPartition::repairEM_dataset_add_constraints(std::map<std::string, uns
         }
         
         // Find the tag with the highest priority
-        std::cout << "one region" << std::endl;
+//        std::cout << "one region" << std::endl;
         PolygonHandle *tagToAssign = NULL;
         unsigned int priorityOfTagg = 0;
         unsigned int priorityOfTago = UINT_MAX;
@@ -1019,7 +1019,6 @@ bool PlanarPartition::repairEM_dataset_add_constraints(std::map<std::string, uns
                      (*currentFaceInRegion)->neighbor(j)->info().getTags() != &universetag ) {
                   std::string v = (*currentFaceInRegion)->neighbor(j)->info().getTags()->getDSName();
                   adjds.insert(v);
-  //                std::string v = (*currentFaceInRegion)->neighbor(j)->info().getTags()->getValueAttributeAsString(att);
                   itatt = priorityMap.find(v);
                   if ( (itatt != priorityMap.end()) && (itatt->second >= priorityOfTagg) ) {
                     priorityOfTagg = itatt->second;
@@ -1076,7 +1075,13 @@ bool PlanarPartition::repairEM_dataset_add_constraints(std::map<std::string, uns
         }
       }
     }
-   
+    
+    //-- if no changes in the round of all faces, then add labels and try again.
+//    std::cout << "#:" << facesToRepair.size() << std::endl;
+    if (facesToRepair.size() == 0)
+      triedthemall = true;
+    else
+      triedthemall = false;
     // Re-tag faces in the vector
     for (std::vector<std::pair<Triangulation::Face_handle, PolygonHandle *> >::iterator currentFace = facesToRepair.begin();
          currentFace != facesToRepair.end();
@@ -1084,7 +1089,6 @@ bool PlanarPartition::repairEM_dataset_add_constraints(std::map<std::string, uns
       currentFace->first->info().removeAllTags();
       currentFace->first->info().addTag(currentFace->second);
     }
-    triedthemall = true;
   }
   return true;
 }
@@ -1376,7 +1380,7 @@ bool PlanarPartition::isValid() {
 
 
 bool PlanarPartition::add_extra_constraints_in_gaps(double splitregions) {
-  std::cout << "Adding extra constraints (max length = " << splitregions << ") in gaps to improve edge-matching results" << std::endl;
+  std::cout << "Adding extra constraints (max length = " << splitregions << ") in gaps to improve edge-matching results...";
 //-- 1. find and store split vertices with d>2 (incident to hole; incident to 1 dataset)
   std::set<Triangulation::Vertex_handle> vs_hole;
   Triangulation::Finite_vertices_iterator v = triangulation.finite_vertices_begin();
@@ -1400,12 +1404,12 @@ bool PlanarPartition::add_extra_constraints_in_gaps(double splitregions) {
     }
     v++;
   }
-  int j = 1;
-  std::cout << "---SUMMARY hole-vertices---" << std::endl;
-  for (std::set<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
-    std::cout << j << " -- " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
-    j++;
-  }
+//  int j = 1;
+//  std::cout << "---SUMMARY hole-vertices---" << std::endl;
+//  for (std::set<Triangulation::Vertex_handle>::iterator curv = vs_hole.begin(); curv != vs_hole.end(); curv++) {
+//    std::cout << j << " -- " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+//    j++;
+//  }
   
 //-- 2. add the constraint in hole being the shortest
 //  std::cout << "CONSTRAINTS ADDED" << std::endl;
@@ -1437,9 +1441,9 @@ bool PlanarPartition::add_extra_constraints_in_gaps(double splitregions) {
     if (found == true) {
       int i = thef->index(*curv);
       triangulation.insert_constraint(*curv, thef->vertex(thef->cw(i)));
-      std::cout << "CONSTRAINED EDGE (SPLITVERTEX) ADDED:" << std::endl;
-      std::cout << " A: " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
-      std::cout << " B: " << (thef->vertex(thef->cw(i)))->point().x() << ":" << (thef->vertex(thef->cw(i)))->point().y() << std::endl;
+//      std::cout << "CONSTRAINED EDGE (SPLITVERTEX) ADDED:" << std::endl;
+//      std::cout << " A: " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+//      std::cout << " B: " << (thef->vertex(thef->cw(i)))->point().x() << ":" << (thef->vertex(thef->cw(i)))->point().y() << std::endl;
     }
     else {
       edgelength = 1e6;
@@ -1463,12 +1467,13 @@ bool PlanarPartition::add_extra_constraints_in_gaps(double splitregions) {
       if (found == true) {
         int i = thef->index(*curv);
         triangulation.insert_constraint(*curv, thef->vertex(thef->cw(i)));
-        std::cout << "CONSTRAINED EDGE ADDED:" << std::endl;
-        std::cout << " A: " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
-        std::cout << " B: " << (thef->vertex(thef->cw(i)))->point().x() << ":" << (thef->vertex(thef->cw(i)))->point().y() << std::endl;
+//        std::cout << "CONSTRAINED EDGE ADDED:" << std::endl;
+//        std::cout << " A: " << (*curv)->point().x() << ":" << (*curv)->point().y() << std::endl;
+//        std::cout << " B: " << (thef->vertex(thef->cw(i)))->point().x() << ":" << (thef->vertex(thef->cw(i)))->point().y() << std::endl;
       }
     }
   }
+  std::cout << "done" << std::endl;
   return true;
 }
 
