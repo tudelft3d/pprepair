@@ -80,7 +80,8 @@ int main (int argc, char* const argv[]) {
     TCLAP::SwitchArg             skipvalideach     ("",  "skipvalideach", "Skip the individual validation of each input polygon (activated by default)", false);
     TCLAP::ValueArg<std::string> repair            ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
     TCLAP::ValueArg<std::string> priority          ("p", "prio", "priority list for repairing (methods <PL|EM>)", false, "", "string");
-    TCLAP::SwitchArg             noextraconstraint ("",  "noextraconstraint", "do not insert new constraints when repairing with EM", false);
+//    TCLAP::SwitchArg             noextraconstraint ("",  "noextraconstraint", "do not insert new constraints when repairing with EM", false);
+    TCLAP::ValueArg<double>      splitregions      ("",  "splitregions", "maximum distance for inserting new constraints when splitting", false, -1.0, "double");
     
     TCLAP::ValueArg<std::string> outerrors         ("",  "outerrors", "output errors (SHP file)", false, "","string");
     TCLAP::ValueArg<std::string> outerrorslist     ("",  "outerrorslist", "output list of errors (CSV file)", false, "", "string");
@@ -95,7 +96,8 @@ int main (int argc, char* const argv[]) {
     cmd.add(extent);
     cmd.add(priority);
     cmd.add(skipvalideach);
-    cmd.add(noextraconstraint);
+//    cmd.add(noextraconstraint);
+    cmd.add(splitregions);
     cmd.xorAdd(validation, repair);
     cmd.add(outfiles);
     cmd.add(inputDSs);
@@ -161,7 +163,7 @@ int main (int argc, char* const argv[]) {
           throw false;
         }
         else {
-          if (pp.repair(repair.getValue(), true, priority.getValue(), !noextraconstraint.getValue()) == false) {
+          if (pp.repair(repair.getValue(), true, priority.getValue(), splitregions.getValue()) == false) {
             throw false;
           }
         }
