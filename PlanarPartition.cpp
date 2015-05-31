@@ -970,7 +970,7 @@ bool PlanarPartition::repairEM_dataset_add_constraints(std::map<std::string, uns
   std::set<Triangulation::Face_handle> processedFaces;
   bool triedthemall = false;
   while (isValid() == false) {
-//    std::cout << "=====start round=====" << std::endl;
+   std::cout << "=====start round=====" << std::endl;
     facesToRepair.clear();
     processedFaces.clear();
     for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
@@ -1067,17 +1067,33 @@ bool PlanarPartition::repairEM_dataset_add_constraints(std::map<std::string, uns
             }
           }
         }
-        if ( (gap == false) || ( (gap == true) && (triedthemall == true) ) || ( (gap == true) && (adjds.size() > 1) ) ) {
-          // Assign the tag to the triangles in the region
+        if (gap == false) {
           for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
             facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
+          }
+        }
+        if (gap == true) {
+          if (adjds.size() > 1) {
+            for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+              facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
+            }
+          }
+          else { //-- only 1 dataset
+            itatt = priorityMap.find(tagToAssign->getDSName());
+            if (itatt->second > 0) {
+              for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
+                if (triedthemall)
+                  std::cout << tagToAssign->getDSName() << std::endl;
+                facesToRepair.push_back(std::pair<Triangulation::Face_handle, PolygonHandle *>(*currentFaceInRegion, tagToAssign));
+              }
+            }
           }
         }
       }
     }
     
     //-- if no changes in the round of all faces, then add labels and try again.
-//    std::cout << "#:" << facesToRepair.size() << std::endl;
+    std::cout << "#:" << facesToRepair.size() << std::endl;
     if (facesToRepair.size() == 0)
       triedthemall = true;
     else
