@@ -188,12 +188,12 @@ bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeat
           OGRPolygon *p = (OGRPolygon *)geometry->getGeometryRef(cur);
           if (p->IsValid() == false) {
             allvalid = false;
-            std::cout << "--> Polygon #" << idno << std::endl;
+            std::cout << "--> MultiPolygon #" << idno << std::endl;
           }
           else {
             if (duplicateVerticesInPolygon(p) == false) {
               allvalid = false;
-              std::cout << "--> Polygon #" << idno << std::endl;
+              std::cout << "--> MultiPolygon #" << idno << std::endl;
             }
           }
         }
@@ -208,72 +208,61 @@ bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeat
   return allvalid;
 }
 
+Polygon PlanarPartition::OGRPolygon2CGAL(OGRPolygon* geometry) {
+  std::vector<std::list<Point> > outerRingsList;
+  std::vector<std::list<Point> > innerRingsList;
+  
+  outerRingsList.push_back(std::list<Point>());
+  // oring
+  for (int currentPoint = 0; currentPoint < (geometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
+    outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint),
+                                          geometry->getExteriorRing()->getY(currentPoint)));
+  // irings
+  innerRingsList.reserve(geometry->getNumInteriorRings());
+  for (int currentRing = 0; currentRing < geometry->getNumInteriorRings(); currentRing++) {
+    innerRingsList.push_back(std::list<Point>());
+    for (int currentPoint = 0; currentPoint < (geometry->getInteriorRing(currentRing)->getNumPoints() - 1); currentPoint++) {
+      innerRingsList.back().push_back(Point(geometry->getInteriorRing(currentRing)->getX(currentPoint),
+                                            geometry->getInteriorRing(currentRing)->getY(currentPoint)));
+    }
+  }
+  Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
+  outerRingsList.clear();
+  std::vector<Ring> irings;
+  for (unsigned int currentRing = 0; currentRing < innerRingsList.size(); currentRing++) {
+    irings.push_back(Ring(innerRingsList[currentRing].begin(), innerRingsList[currentRing].end()));
+    innerRingsList[currentRing].clear();
+  }
+//  polygonsVector.push_back(Polygon(oring, irings.begin(), irings.end()));
+//  return true;
+  return Polygon(oring, irings.begin(), irings.end());
+}
+
 bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
   std::cout << "\tAdding the polygons to the PP..." << std::endl;
+  int i = 1;
   for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); f++) {
+    if (i % 100 == 0)
+      std::cout << i << std::endl;
+    i++;
     std::vector<Polygon> polygonsVector;
-    std::vector<std::list<Point> > outerRingsList;
-    std::vector<std::list<Point> > innerRingsList;
     switch((*f)->GetGeometryRef()->getGeometryType()) {
       case wkbPolygon:
       case wkbPolygon25D: {
         OGRPolygon *geometry = static_cast<OGRPolygon *>((*f)->GetGeometryRef());
-        outerRingsList.push_back(std::list<Point>());
-        // oring
-        for (int currentPoint = 0; currentPoint < (geometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
-          outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint),
-                                                geometry->getExteriorRing()->getY(currentPoint)));
-        // irings
-        innerRingsList.reserve(geometry->getNumInteriorRings());
-        for (int currentRing = 0; currentRing < geometry->getNumInteriorRings(); currentRing++) {
-          innerRingsList.push_back(std::list<Point>());
-          for (int currentPoint = 0; currentPoint < (geometry->getInteriorRing(currentRing)->getNumPoints() - 1); currentPoint++) {
-            innerRingsList.back().push_back(Point(geometry->getInteriorRing(currentRing)->getX(currentPoint),
-                                                  geometry->getInteriorRing(currentRing)->getY(currentPoint)));
-          }
-        }
-        Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
-        outerRingsList.clear();
-        std::vector<Ring> irings;
-        for (unsigned int currentRing = 0; currentRing < innerRingsList.size(); currentRing++) {
-          irings.push_back(Ring(innerRingsList[currentRing].begin(), innerRingsList[currentRing].end()));
-          innerRingsList[currentRing].clear();
-        }
-        polygonsVector.push_back(Polygon(oring, irings.begin(), irings.end()));
+        polygonsVector.push_back(OGRPolygon2CGAL(geometry));
         break;
       }
       case wkbMultiPolygon:
       case wkbMultiPolygon25D: {
         OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*f)->GetGeometryRef());
-        // Check each polygon
+        // Check each polygon of the MultiPolygon
         for (int currentPolygon = 0; currentPolygon < geometry->getNumGeometries(); currentPolygon++) {
-          OGRPolygon *thisGeometry = static_cast<OGRPolygon *>(geometry->getGeometryRef(currentPolygon));
-          outerRingsList.push_back(std::list<Point>());
-          // oring
-          for (int currentPoint = 0; currentPoint < (thisGeometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
-            outerRingsList.back().push_back(Point(thisGeometry->getExteriorRing()->getX(currentPoint),
-                                                  thisGeometry->getExteriorRing()->getY(currentPoint)));
-          // irings
-          innerRingsList.reserve(innerRingsList.size()+thisGeometry->getNumInteriorRings());
-          for (int currentRing = 0; currentRing < thisGeometry->getNumInteriorRings(); currentRing++) {
-            innerRingsList.push_back(std::list<Point>());
-            for (int currentPoint = 0; currentPoint < (thisGeometry->getInteriorRing(currentRing)->getNumPoints() - 1); currentPoint++) {
-              innerRingsList.back().push_back(Point(thisGeometry->getInteriorRing(currentRing)->getX(currentPoint),
-                                                    thisGeometry->getInteriorRing(currentRing)->getY(currentPoint)));
-            }
-          }
-          Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
-          outerRingsList.clear();
-          std::vector<Ring> irings;
-          for (unsigned int currentRing = 0; currentRing < innerRingsList.size(); currentRing++) {
-            irings.push_back(Ring(innerRingsList[currentRing].begin(), innerRingsList[currentRing].end()));
-            innerRingsList[currentRing].clear();
-          }
-          polygonsVector.push_back(Polygon(oring, irings.begin(), irings.end()));
+          OGRPolygon *g = static_cast<OGRPolygon *>(geometry->getGeometryRef(currentPolygon));
+          polygonsVector.push_back(OGRPolygon2CGAL(g));
         }
         break;
       }
-        
       default:
         std::cerr << "\tFeature #" << (*f)->GetFID() << ": unsupported type (";
         std::cerr << "). Skipped." << std::endl;
