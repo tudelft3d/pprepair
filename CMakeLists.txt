@@ -61,7 +61,7 @@ if ( NOT GDAL_FOUND )
   message(SEND_ERROR "pprepair requires the GDAL library")
 endif()
 
-include_directories( ${GDAL_INCLUDE_DIR} )
+include_directories( ${GDAL_INCLUDE_DIR}, include )
 
 # C++11
 include(CheckCXXCompilerFlag)
