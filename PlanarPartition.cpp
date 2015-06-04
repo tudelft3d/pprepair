@@ -22,12 +22,16 @@
 #include "PlanarPartition.h"
 
 
-PlanarPartition::PlanarPartition() {
+PlanarPartition::PlanarPartition(int roundingvalue) {
 	// Registers drivers for all supported formats in OGR
 	OGRRegisterAll();
 	// Set internal states
 	state = CREATED;
   hasExtent = false;
+  if (roundingvalue != -9999) {
+    _rounding = true;
+    _roundingvalue = pow(10, roundingvalue);
+  }
 //  _bbox
 	// std::cout precision (for debugging)
 	std::cout.setf(std::ios::fixed,std::ios::floatfield);
@@ -208,22 +212,36 @@ bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeat
   return allvalid;
 }
 
+
+double PlanarPartition::roundvalue(double v) {
+  if (_rounding == false)
+    return v;
+  else {
+    return round(v / _roundingvalue) * _roundingvalue;
+  }
+}
+
+
 Polygon PlanarPartition::OGRPolygon2CGAL(OGRPolygon* geometry) {
   std::vector<std::list<Point> > outerRingsList;
   std::vector<std::list<Point> > innerRingsList;
-  
   outerRingsList.push_back(std::list<Point>());
-  // oring
-  for (int currentPoint = 0; currentPoint < (geometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
-    outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint),
-                                          geometry->getExteriorRing()->getY(currentPoint)));
-  // irings
+  //-- oring
+  for (int currentPoint = 0; currentPoint < (geometry->getExteriorRing()->getNumPoints() - 1); currentPoint++) {
+//    double x = geometry->getExteriorRing()->getX(currentPoint);
+//    std::cout << "x :" << x << std::endl;
+//    double rx = round(x * 1.0) / 1.0;
+//    std::cout << "rx:" << roundvalue(x) << std::endl;
+    outerRingsList.back().push_back(Point(roundvalue(geometry->getExteriorRing()->getX(currentPoint)),
+                                          roundvalue(geometry->getExteriorRing()->getY(currentPoint))));
+  }
+  //-- irings
   innerRingsList.reserve(geometry->getNumInteriorRings());
   for (int currentRing = 0; currentRing < geometry->getNumInteriorRings(); currentRing++) {
     innerRingsList.push_back(std::list<Point>());
     for (int currentPoint = 0; currentPoint < (geometry->getInteriorRing(currentRing)->getNumPoints() - 1); currentPoint++) {
-      innerRingsList.back().push_back(Point(geometry->getInteriorRing(currentRing)->getX(currentPoint),
-                                            geometry->getInteriorRing(currentRing)->getY(currentPoint)));
+      innerRingsList.back().push_back(Point(roundvalue(geometry->getInteriorRing(currentRing)->getX(currentPoint)),
+                                            roundvalue(geometry->getInteriorRing(currentRing)->getY(currentPoint))));
     }
   }
   Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
@@ -233,13 +251,14 @@ Polygon PlanarPartition::OGRPolygon2CGAL(OGRPolygon* geometry) {
     irings.push_back(Ring(innerRingsList[currentRing].begin(), innerRingsList[currentRing].end()));
     innerRingsList[currentRing].clear();
   }
-//  polygonsVector.push_back(Polygon(oring, irings.begin(), irings.end()));
-//  return true;
   return Polygon(oring, irings.begin(), irings.end());
 }
 
+
 bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
   std::cout << "\tAdding the polygons to the PP..." << std::endl;
+  if (_rounding == true)
+    std::cout << "\tAll input coordinates are rounded to the closest " << _roundingvalue << std::endl;
   int i = 1;
   for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); f++) {
     if (i % 100 == 0)

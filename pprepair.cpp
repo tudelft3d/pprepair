@@ -80,7 +80,6 @@ int main (int argc, char* const argv[]) {
     TCLAP::SwitchArg             skipvalideach     ("",  "skipvalideach", "Skip the individual validation of each input polygon (activated by default)", false);
     TCLAP::ValueArg<std::string> repair            ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
     TCLAP::ValueArg<std::string> priority          ("p", "prio", "priority list for repairing (methods <PL|EM>)", false, "", "string");
-//    TCLAP::SwitchArg             noextraconstraint ("",  "noextraconstraint", "do not insert new constraints when repairing with EM", false);
     TCLAP::ValueArg<double>      splitregions      ("",  "splitregions", "maximum distance for inserting new constraints when splitting", false, -1.0, "double");
     
     TCLAP::ValueArg<std::string> outerrors         ("",  "outerrors", "output errors (SHP file)", false, "","string");
@@ -88,15 +87,17 @@ int main (int argc, char* const argv[]) {
     TCLAP::ValueArg<std::string> outtr             ("",  "outtr", "output triangulation (SHP file)", false, "","string");
     
     TCLAP::ValueArg<float>       elfslivers        ("",  "elf", "ignore holes that are not slivers (provide minarea)", false, -1.0, "float");
+    TCLAP::ValueArg<int>         rounding          ("",  "rounding", "rounding input coordinates to 1eX (you pass X)", false, -9999, "int");
 
+    
     cmd.add(elfslivers);
+    cmd.add(rounding);
     cmd.add(outerrorslist);
     cmd.add(outerrors);
     cmd.add(outtr);
     cmd.add(extent);
     cmd.add(priority);
     cmd.add(skipvalideach);
-//    cmd.add(noextraconstraint);
     cmd.add(splitregions);
     cmd.xorAdd(validation, repair);
     cmd.add(outfiles);
@@ -104,7 +105,7 @@ int main (int argc, char* const argv[]) {
     cmd.parse( argc, argv );
     
     //-- add input datasets to PP
-    PlanarPartition pp;      
+    PlanarPartition pp(rounding.getValue());
     std::vector<std::string> inputs = inputDSs.getValue();
     for (std::vector<std::string>::iterator it = inputs.begin() ; it != inputs.end(); ++it) {
       if (pp.addOGRdataset(*it, skipvalideach.getValue()) == false) {

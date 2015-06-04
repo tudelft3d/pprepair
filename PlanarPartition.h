@@ -28,7 +28,7 @@
 class PlanarPartition {
 public:
   // Constructors and destructors, initialisation
-	PlanarPartition();
+	PlanarPartition(int roundingvalue = -9999);
 	~PlanarPartition();
   
   bool addOGRdataset(std::string &file, bool skipvalideach = false);
@@ -42,7 +42,6 @@ public:
   bool exportPolygonsSHP(std::string &folder);
   bool exportTriangulation(std::string &outfile);
   
-
   void getListOverlappingPolygons(std::ostream &ostr = std::cout);
   void printTriangulationInfo(std::ostream &ostr = std::cout);
   void printProblemRegions(std::ostream &ostr = std::cout);
@@ -67,6 +66,8 @@ private:
   PolygonHandle universetag;
   PolygonHandle extenttag;
   bool hasExtent;
+  bool _rounding = false;
+  double _roundingvalue;
   OGREnvelope _bbox;
   Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
 
@@ -92,6 +93,7 @@ private:
                                         bool alsoUniverse = true);
   
   Polygon OGRPolygon2CGAL(OGRPolygon* f);
+  double roundvalue(double v);
   bool add_extra_constraints_in_gaps(double splitregions);
   void getProblemRegionsAsOGR(std::vector<OGRGeometry*> &holes, std::vector<OGRGeometry*> &overlaps);
   bool getPriorityList(const std::string &priofile, std::map<std::string, unsigned int> &priorityMap, std::string &attr);
