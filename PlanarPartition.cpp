@@ -118,7 +118,7 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
   std::vector<OGRFeature*> ls;
   ls.push_back(feature->Clone());
   allFeatureDefns.push_back(feature->GetDefnRef());
-  addFeatures(ls);
+  addFeatures(ls, true);
   OGRDataSource::DestroyDataSource(dataSource);
   hasExtent = true;
   return true;
@@ -131,7 +131,7 @@ bool PlanarPartition::addOGRdataset(std::string &file, bool skipvalideach) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
 		return false;
 	}
-  std::cout << "Reading dataset: " << file << std::endl;
+  std::cout << "Reading input dataset: " << file << std::endl;
   std::vector<OGRFeature*> lsInputFeatures;
   if (getOGRFeatures(file, lsInputFeatures) == false)
     return false;
@@ -152,6 +152,7 @@ bool PlanarPartition::addOGRdataset(std::string &file, bool skipvalideach) {
     return false;
   return true;
 }
+
 
 bool PlanarPartition::duplicateVerticesInPolygon(OGRPolygon* geometry) {
   bool valid = true;
@@ -255,17 +256,16 @@ Polygon PlanarPartition::OGRPolygon2CGAL(OGRPolygon* geometry) {
     irings.push_back(Ring(innerRingsList[currentRing].begin(), innerRingsList[currentRing].end()));
     innerRingsList[currentRing].clear();
   }
-//  polygonsVector.push_back(Polygon(oring, irings.begin(), irings.end()));
-//  return true;
   return Polygon(oring, irings.begin(), irings.end());
 }
 
-bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
+
+bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures, bool spatialextent) {
   std::cout << "\tAdding the polygons to the PP..." << std::endl;
   int i = 1;
   for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); f++) {
     if (i % 100 == 0)
-      std::cout << i << std::endl;
+      std::cout << "\tpolygon #" << i << std::endl;
     i++;
     std::vector<Polygon> polygonsVector;
     switch((*f)->GetGeometryRef()->getGeometryType()) {
@@ -293,7 +293,11 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
     }
     
     for (std::vector<Polygon>::iterator currentPolygon = polygonsVector.begin(); currentPolygon != polygonsVector.end(); currentPolygon++) {
-      PolygonHandle *handle = new PolygonHandle(*f);
+      PolygonHandle *handle;
+      if (spatialextent == true)
+        handle = &_extenttag;
+      else
+        handle = new PolygonHandle(*f);
       polygons.push_back(handle);
 
       // Create edges vector for this handle
@@ -385,7 +389,7 @@ bool PlanarPartition::buildPP() {
     return false;
   }
   
-  std::cout << "Building the PP (tagging the triangles)..." << std::endl;
+  std::cout << "Building the PP (tagging the triangles)...";
   std::stack<Triangulation::Face_handle> stack;
   Triangulation::Vertices_in_constraint_iterator previousVertex, currentVertex;
   Triangulation::Face_handle currentFace;
@@ -456,10 +460,11 @@ bool PlanarPartition::buildPP() {
     // Free memory for inner boundary
     edgesToTag[currentPolygon].second.clear();
     // Expand the tags: special handling of the spatialExtent tag if needed
-    if ( (hasExtent == true) && (currentPolygon+1 == edgesToTag.size()) )
-      tagStack(stack, &extenttag);
-    else
-      tagStack(stack, polygons[currentPolygon]);
+    tagStack(stack, polygons[currentPolygon]);
+//    if ( (hasExtent == true) && (currentPolygon+1 == edgesToTag.size()) )
+//      tagStack(stack, &_extenttag);
+//    else
+//      tagStack(stack, polygons[currentPolygon]);
   }
   
   // Free remaining memory
@@ -471,13 +476,14 @@ bool PlanarPartition::buildPP() {
   
   state = TAGGED;
   isValid();
+  std::cout << " done." << std::endl;
   return true;
 }
 
 
 void PlanarPartition::removeAllExtentTags() {
 	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
-		if (currentFace->info().hasTag(&extenttag)) {
+		if (currentFace->info().hasTag(&_extenttag)) {
       currentFace->info().removeAllTags();
 			currentFace->info().addTag(&universetag);
 		}
@@ -523,7 +529,7 @@ void PlanarPartition::repairSpatialExtent() {
         //-- check if the gap is neighbouring to an extent
         for (std::set<Triangulation::Face_handle>::const_iterator cur = facesInRegion.begin(); cur != facesInRegion.end(); cur++) {
           for (int i = 0; i < 3; i++) {
-            if ( (*cur)->neighbor(i)->info().hasTag(&extenttag) == true) {
+            if ( (*cur)->neighbor(i)->info().hasTag(&_extenttag) == true) {
               extentgap = true;
               break;
             }
@@ -539,14 +545,14 @@ void PlanarPartition::repairSpatialExtent() {
             if (numberOfTags == 0) continue;
             if (numberOfTags == 1) {
               tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();
-              if ( (tagToAssign != &universetag) && (tagToAssign != &extenttag) )
+              if ( (tagToAssign != &universetag) && (tagToAssign != &_extenttag) )
                 break;
             }
             else {
               std::list<PolygonHandle *>::const_iterator randomTag = static_cast<MultiPolygonHandle *>((*randomFace)->neighbor(neighbourIndex)->info().getTags())->getHandles()->begin();
               std::advance(randomTag, rand()%numberOfTags);
               tagToAssign = *randomTag;
-              if ( (tagToAssign != &universetag) && (tagToAssign != &extenttag) )
+              if ( (tagToAssign != &universetag) && (tagToAssign != &_extenttag) )
                 break;
             }
           }
@@ -556,8 +562,8 @@ void PlanarPartition::repairSpatialExtent() {
       else {
         //-- an overlap
         std::set<Triangulation::Face_handle>::iterator cur = facesInRegion.begin();
-        if ( (*cur)->info().hasTag(&extenttag) ) {
-          tagToAssign = &extenttag;
+        if ( (*cur)->info().hasTag(&_extenttag) ) {
+          tagToAssign = &_extenttag;
           errorrelatedtoextent = true;
         }
       }
