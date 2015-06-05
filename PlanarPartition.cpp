@@ -66,55 +66,40 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
   _bbox.Merge(bbox);
 
   //-- create a bigger bbox with the polygon as a hole
-  double shift = 10000;
+  double shift = 1000;
   OGRLinearRing oring;
   oring.addPoint(_bbox.MinX - shift, _bbox.MinY - shift);
   oring.addPoint(_bbox.MinX - shift, _bbox.MaxY + shift);
   oring.addPoint(_bbox.MaxX + shift, _bbox.MaxY + shift);
   oring.addPoint(_bbox.MaxX + shift, _bbox.MinY - shift);
   oring.addPoint(_bbox.MinX - shift, _bbox.MinY - shift);
-  OGRPolygon extentpolygon;
-  extentpolygon.addRing(&oring);
+  OGRPolygon bboxpolygon;
+  bboxpolygon.addRing(&oring);
   
+  OGRGeometry* se_geom = static_cast<OGRGeometry*>(&bboxpolygon);
   OGRFeature *feature;
   while ((feature = dataLayer->GetNextFeature()) != NULL) {
     switch(feature->GetGeometryRef()->getGeometryType()) {
-      case wkbPolygon: {
-        OGRPolygon *geometry = static_cast<OGRPolygon *>(feature->GetGeometryRef());
-        if (geometry->IsValid() == false) {
+      case wkbPolygon: 
+      case wkbMultiPolygon: {
+        if (feature->GetGeometryRef()->IsValid() == false) {
           std::cerr << "Error: spatial extent polygon invalid." << std::endl;
-          return false;        
+          return false;
         }
-        OGRLinearRing *iring = geometry->getExteriorRing();
-        iring->reversePoints();
-        extentpolygon.addRing(iring);
-        break;
-      }
-      case wkbMultiPolygon:{
-        std::cout << "\tEvil MultiPolygons in spatial extent!" << std::endl;
-        OGRMultiPolygon *multip = static_cast<OGRMultiPolygon *>(feature->GetGeometryRef());
-        for (int cur = 0; cur < multip->getNumGeometries(); cur++) {
-          OGRPolygon *geometry = (OGRPolygon *)multip->getGeometryRef(cur);
-          if (geometry->IsValid() == false) {
-            std::cerr << "Error: spatial extent polygon invalid." << std::endl;
-            return false;        
-          }
-          OGRLinearRing *iring = geometry->getExteriorRing();
-          iring->reversePoints();
-          extentpolygon.addRing(iring);
-        }
+        se_geom = se_geom->Difference(feature->GetGeometryRef());
         break;
       }
       default: {
+        std::cout << feature->GetGeometryRef()->getGeometryType() << std::endl;
         std::cerr << "Error: spatial extent must be a (Multi)Polygon." << std::endl;
         return false;
       }
     }
   }
-  //-- create the feature (only one)
+  //-- create the feature 
   dataLayer->ResetReading();
   feature = dataLayer->GetNextFeature();
-  feature->SetGeometry(&extentpolygon);
+  feature->SetGeometry(se_geom);
   std::vector<OGRFeature*> ls;
   ls.push_back(feature->Clone());
   allFeatureDefns.push_back(feature->GetDefnRef());
