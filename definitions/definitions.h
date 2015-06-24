@@ -23,7 +23,7 @@
 #define DEFINITIONS_H
 
 // OGR, to store OGR types directly
-#include <gdal/ogrsf_frmts.h>
+#include <ogrsf_frmts.h>
 
 // Standard libraries
 #include <iostream>
