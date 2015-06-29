@@ -28,15 +28,9 @@ To compile pprepair, you first need to install the free libraries [CGAL](http://
 
 To install it, run:
 
-    $ mkdir build
-    $ cd build
-    $ cmake ..
+    $ cmake .
     $ make
     $ ./pprepair -i inputfile -o outputfile -fix
-
-On Ubuntu 14.04 to install dependencies:
-
-    $ sudo apt-get install libcgal-dev libgdal-dev libtclap-dev libcgal10
 
 You can get all the options simply by running pprepair with no arguments
     $ ./pprepair

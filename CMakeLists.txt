@@ -30,7 +30,7 @@ if("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" VERSION_GREATER 2.6)
 endif()
 
 set( CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS true )
-
+ 
 if ( COMMAND cmake_policy )
   cmake_policy( SET CMP0003 NEW )  
 endif()
@@ -63,24 +63,10 @@ endif()
 
 include_directories( ${GDAL_INCLUDE_DIR}, include )
 
-# C++11
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if(COMPILER_SUPPORTS_CXX11)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-elseif(COMPILER_SUPPORTS_CXX0X)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-else()
-        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
-endif()
-
 # Creating entries for target: pprepair
 # ############################
 
 add_executable( pprepair  FaceInfo.cpp PlanarPartition.cpp PolygonHandle.cpp pprepair.cpp )
-
-#set_property(TARGET pprepair PROPERTY CXX_STANDARD 11)
 
 add_to_cached_list( CGAL_EXECUTABLE_TARGETS pprepair )
 
