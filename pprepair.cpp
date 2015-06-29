@@ -75,12 +75,11 @@ int main (int argc, char* const argv[]) {
   try {
     TCLAP::MultiArg<std::string> inputDSs          ("i", "input", "input OGR dataset (this can be used multiple times)", true, "string");
     TCLAP::ValueArg<std::string> outfiles          ("o", "output", "folder for repaired shapefile(s))", false, "","string");
-    TCLAP::ValueArg<std::string> extent            ("e", "extent", "spatial extent (OGR dataset containing *one* polygon)", false, "", "string");
+    TCLAP::ValueArg<std::string> extent            ("e", "extent", "spatial extent (any OGR dataset)", false, "", "string");
     TCLAP::SwitchArg             validation        ("v", "validation", "validation only (gaps and overlaps reported)", false);
     TCLAP::SwitchArg             skipvalideach     ("",  "skipvalideach", "Skip the individual validation of each input polygon (activated by default)", false);
     TCLAP::ValueArg<std::string> repair            ("r", "repair", "repair method used: <fix|RN|LB|PL|EM>", false, "", &rmVals);
     TCLAP::ValueArg<std::string> priority          ("p", "prio", "priority list for repairing (methods <PL|EM>)", false, "", "string");
-//    TCLAP::SwitchArg             noextraconstraint ("",  "noextraconstraint", "do not insert new constraints when repairing with EM", false);
     TCLAP::ValueArg<double>      splitregions      ("",  "splitregions", "maximum distance for inserting new constraints when splitting", false, -1.0, "double");
     
     TCLAP::ValueArg<std::string> outerrors         ("",  "outerrors", "output errors (SHP file)", false, "","string");
@@ -96,7 +95,6 @@ int main (int argc, char* const argv[]) {
     cmd.add(extent);
     cmd.add(priority);
     cmd.add(skipvalideach);
-//    cmd.add(noextraconstraint);
     cmd.add(splitregions);
     cmd.xorAdd(validation, repair);
     cmd.add(outfiles);
@@ -113,7 +111,7 @@ int main (int argc, char* const argv[]) {
       }
       
     }
-    std::cout << std::endl << "Total input polygons: " << pp.noPolygons() << std::endl;
+    std::cout << "\tTotal input single polygons: " << pp.noPolygons() << std::endl;
     //-- add spatial extent
     if (extent.getValue() != "") {
       if (pp.addOGRdatasetExtent(extent.getValue()) == false)

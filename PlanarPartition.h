@@ -65,7 +65,7 @@ private:
   std::vector<std::pair<PolygonHandle *, Polygon> > outputPolygons;
   std::vector<PolygonHandle *> polygons;
   PolygonHandle universetag;
-  PolygonHandle extenttag;
+  PolygonHandle _extenttag;
   bool hasExtent;
   OGREnvelope _bbox;
   Triangulation::Face_handle startingSearchFace, startingSearchFaceInRing;  // faces that are expected to be close to the next point to be added
@@ -91,13 +91,14 @@ private:
                                         double splitregions = -1.0,
                                         bool alsoUniverse = true);
   
+  Polygon OGRPolygon2CGAL(OGRPolygon* f);
   bool add_extra_constraints_in_gaps(double splitregions);
   void getProblemRegionsAsOGR(std::vector<OGRGeometry*> &holes, std::vector<OGRGeometry*> &overlaps);
   bool getPriorityList(const std::string &priofile, std::map<std::string, unsigned int> &priorityMap, std::string &attr);
   bool getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures);
   bool validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeatures);
   bool duplicateVerticesInPolygon(OGRPolygon* geometry);
-  bool addFeatures(std::vector<OGRFeature*> &lsOGRFeatures);
+  bool addFeatures(std::vector<OGRFeature*> &lsOGRFeatures, bool spatialextent = false);
   void tagStack(std::stack<Triangulation::Face_handle> &stack, PolygonHandle *handle);
   void addToLength(std::map<PolygonHandle *, double> &lengths, PolygonHandle *ph, double length);
   void removeVertices();

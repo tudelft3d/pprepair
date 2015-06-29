@@ -52,51 +52,58 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
 		return false;
 	}
-  std::cout << "Adding spatial extent dataset" << std::endl << "\t" << file << std::endl;
+  std::cout << "Adding spatial extent dataset: " << file << std::endl;
   OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
 	if (dataSource == NULL) {
 		std::cerr << "Error: Could not open file." << std::endl;
 		return false;
 	}
   OGRLayer *dataLayer = dataSource->GetLayer(0);
-	unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
-  if (numberOfPolygons != 1) {
-		std::cerr << "Error: Spatial Extent file has more than 1 feature." << std::endl;
-		return false;
-  }
-
+  std::cout << "\t(" << dataLayer->GetFeatureCount(true) << " polygons)" << std::endl;
   dataLayer->ResetReading();
   OGREnvelope bbox;
   dataLayer->GetExtent(&bbox);
   _bbox.Merge(bbox);
-//  std::cout << _bbox.MinX << "," << _bbox.MinY << std::endl;
-//  std::cout << _bbox.MaxX << "," << _bbox.MaxY << std::endl;
-  
-  OGRFeature *feature;
-  feature = dataLayer->GetNextFeature();
-  if (feature->GetGeometryRef()->getGeometryType() != wkbPolygon) {
-		std::cerr << "Error: Spatial Extent feature not a Polygon." << std::endl;
-		return false;
-  }
-  OGRPolygon *geometry = static_cast<OGRPolygon *>(feature->GetGeometryRef());
+
   //-- create a bigger bbox with the polygon as a hole
-  double shift = 10000;
-  OGRLinearRing *iring = geometry->getExteriorRing();
-  iring->reversePoints();
+  double shift = 1000;
   OGRLinearRing oring;
   oring.addPoint(_bbox.MinX - shift, _bbox.MinY - shift);
   oring.addPoint(_bbox.MinX - shift, _bbox.MaxY + shift);
   oring.addPoint(_bbox.MaxX + shift, _bbox.MaxY + shift);
   oring.addPoint(_bbox.MaxX + shift, _bbox.MinY - shift);
   oring.addPoint(_bbox.MinX - shift, _bbox.MinY - shift);
-  OGRPolygon hole;
-  hole.addRing(&oring);
-  hole.addRing(iring);
-  feature->SetGeometry(&hole);
+  OGRPolygon bboxpolygon;
+  bboxpolygon.addRing(&oring);
+  
+  OGRGeometry* se_geom = static_cast<OGRGeometry*>(&bboxpolygon);
+  OGRFeature *feature;
+  while ((feature = dataLayer->GetNextFeature()) != NULL) {
+    switch(feature->GetGeometryRef()->getGeometryType()) {
+      case wkbPolygon: 
+      case wkbMultiPolygon: {
+        if (feature->GetGeometryRef()->IsValid() == false) {
+          std::cerr << "Error: spatial extent polygon invalid." << std::endl;
+          return false;
+        }
+        se_geom = se_geom->Difference(feature->GetGeometryRef());
+        break;
+      }
+      default: {
+        std::cout << feature->GetGeometryRef()->getGeometryType() << std::endl;
+        std::cerr << "Error: spatial extent must be a (Multi)Polygon." << std::endl;
+        return false;
+      }
+    }
+  }
+  //-- create the feature 
+  dataLayer->ResetReading();
+  feature = dataLayer->GetNextFeature();
+  feature->SetGeometry(se_geom);
   std::vector<OGRFeature*> ls;
   ls.push_back(feature->Clone());
   allFeatureDefns.push_back(feature->GetDefnRef());
-  addFeatures(ls);
+  addFeatures(ls, true);
   OGRDataSource::DestroyDataSource(dataSource);
   hasExtent = true;
   return true;
@@ -109,7 +116,7 @@ bool PlanarPartition::addOGRdataset(std::string &file, bool skipvalideach) {
     std::cerr << "Error: The triangulation has already been tagged. It cannot be modified!" << std::endl;
 		return false;
 	}
-  std::cout << "Reading dataset: " << file << std::endl;
+  std::cout << "Reading input dataset: " << file << std::endl;
   std::vector<OGRFeature*> lsInputFeatures;
   if (getOGRFeatures(file, lsInputFeatures) == false)
     return false;
@@ -130,6 +137,7 @@ bool PlanarPartition::addOGRdataset(std::string &file, bool skipvalideach) {
     return false;
   return true;
 }
+
 
 bool PlanarPartition::duplicateVerticesInPolygon(OGRPolygon* geometry) {
   bool valid = true;
@@ -188,12 +196,12 @@ bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeat
           OGRPolygon *p = (OGRPolygon *)geometry->getGeometryRef(cur);
           if (p->IsValid() == false) {
             allvalid = false;
-            std::cout << "--> Polygon #" << idno << std::endl;
+            std::cout << "--> MultiPolygon #" << idno << std::endl;
           }
           else {
             if (duplicateVerticesInPolygon(p) == false) {
               allvalid = false;
-              std::cout << "--> Polygon #" << idno << std::endl;
+              std::cout << "--> MultiPolygon #" << idno << std::endl;
             }
           }
         }
@@ -208,72 +216,60 @@ bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeat
   return allvalid;
 }
 
-bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
+Polygon PlanarPartition::OGRPolygon2CGAL(OGRPolygon* geometry) {
+  std::vector<std::list<Point> > outerRingsList;
+  std::vector<std::list<Point> > innerRingsList;
+  
+  outerRingsList.push_back(std::list<Point>());
+  // oring
+  for (int currentPoint = 0; currentPoint < (geometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
+    outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint),
+                                          geometry->getExteriorRing()->getY(currentPoint)));
+  // irings
+  innerRingsList.reserve(geometry->getNumInteriorRings());
+  for (int currentRing = 0; currentRing < geometry->getNumInteriorRings(); currentRing++) {
+    innerRingsList.push_back(std::list<Point>());
+    for (int currentPoint = 0; currentPoint < (geometry->getInteriorRing(currentRing)->getNumPoints() - 1); currentPoint++) {
+      innerRingsList.back().push_back(Point(geometry->getInteriorRing(currentRing)->getX(currentPoint),
+                                            geometry->getInteriorRing(currentRing)->getY(currentPoint)));
+    }
+  }
+  Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
+  outerRingsList.clear();
+  std::vector<Ring> irings;
+  for (unsigned int currentRing = 0; currentRing < innerRingsList.size(); currentRing++) {
+    irings.push_back(Ring(innerRingsList[currentRing].begin(), innerRingsList[currentRing].end()));
+    innerRingsList[currentRing].clear();
+  }
+  return Polygon(oring, irings.begin(), irings.end());
+}
+
+
+bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures, bool spatialextent) {
   std::cout << "\tAdding the polygons to the PP..." << std::endl;
+  int i = 1;
   for (std::vector<OGRFeature*>::iterator f = lsOGRFeatures.begin() ; f != lsOGRFeatures.end(); f++) {
+    if (i % 100 == 0)
+      std::cout << "\tpolygon #" << i << std::endl;
+    i++;
     std::vector<Polygon> polygonsVector;
-    std::vector<std::list<Point> > outerRingsList;
-    std::vector<std::list<Point> > innerRingsList;
     switch((*f)->GetGeometryRef()->getGeometryType()) {
       case wkbPolygon:
       case wkbPolygon25D: {
         OGRPolygon *geometry = static_cast<OGRPolygon *>((*f)->GetGeometryRef());
-        outerRingsList.push_back(std::list<Point>());
-        // oring
-        for (int currentPoint = 0; currentPoint < (geometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
-          outerRingsList.back().push_back(Point(geometry->getExteriorRing()->getX(currentPoint),
-                                                geometry->getExteriorRing()->getY(currentPoint)));
-        // irings
-        innerRingsList.reserve(geometry->getNumInteriorRings());
-        for (int currentRing = 0; currentRing < geometry->getNumInteriorRings(); currentRing++) {
-          innerRingsList.push_back(std::list<Point>());
-          for (int currentPoint = 0; currentPoint < (geometry->getInteriorRing(currentRing)->getNumPoints() - 1); currentPoint++) {
-            innerRingsList.back().push_back(Point(geometry->getInteriorRing(currentRing)->getX(currentPoint),
-                                                  geometry->getInteriorRing(currentRing)->getY(currentPoint)));
-          }
-        }
-        Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
-        outerRingsList.clear();
-        std::vector<Ring> irings;
-        for (unsigned int currentRing = 0; currentRing < innerRingsList.size(); currentRing++) {
-          irings.push_back(Ring(innerRingsList[currentRing].begin(), innerRingsList[currentRing].end()));
-          innerRingsList[currentRing].clear();
-        }
-        polygonsVector.push_back(Polygon(oring, irings.begin(), irings.end()));
+        polygonsVector.push_back(OGRPolygon2CGAL(geometry));
         break;
       }
       case wkbMultiPolygon:
       case wkbMultiPolygon25D: {
         OGRMultiPolygon *geometry = static_cast<OGRMultiPolygon *>((*f)->GetGeometryRef());
-        // Check each polygon
+        // Check each polygon of the MultiPolygon
         for (int currentPolygon = 0; currentPolygon < geometry->getNumGeometries(); currentPolygon++) {
-          OGRPolygon *thisGeometry = static_cast<OGRPolygon *>(geometry->getGeometryRef(currentPolygon));
-          outerRingsList.push_back(std::list<Point>());
-          // oring
-          for (int currentPoint = 0; currentPoint < (thisGeometry->getExteriorRing()->getNumPoints() - 1); currentPoint++)
-            outerRingsList.back().push_back(Point(thisGeometry->getExteriorRing()->getX(currentPoint),
-                                                  thisGeometry->getExteriorRing()->getY(currentPoint)));
-          // irings
-          innerRingsList.reserve(innerRingsList.size()+thisGeometry->getNumInteriorRings());
-          for (int currentRing = 0; currentRing < thisGeometry->getNumInteriorRings(); currentRing++) {
-            innerRingsList.push_back(std::list<Point>());
-            for (int currentPoint = 0; currentPoint < (thisGeometry->getInteriorRing(currentRing)->getNumPoints() - 1); currentPoint++) {
-              innerRingsList.back().push_back(Point(thisGeometry->getInteriorRing(currentRing)->getX(currentPoint),
-                                                    thisGeometry->getInteriorRing(currentRing)->getY(currentPoint)));
-            }
-          }
-          Ring oring(outerRingsList[0].begin(), outerRingsList[0].end());
-          outerRingsList.clear();
-          std::vector<Ring> irings;
-          for (unsigned int currentRing = 0; currentRing < innerRingsList.size(); currentRing++) {
-            irings.push_back(Ring(innerRingsList[currentRing].begin(), innerRingsList[currentRing].end()));
-            innerRingsList[currentRing].clear();
-          }
-          polygonsVector.push_back(Polygon(oring, irings.begin(), irings.end()));
+          OGRPolygon *g = static_cast<OGRPolygon *>(geometry->getGeometryRef(currentPolygon));
+          polygonsVector.push_back(OGRPolygon2CGAL(g));
         }
         break;
       }
-        
       default:
         std::cerr << "\tFeature #" << (*f)->GetFID() << ": unsupported type (";
         std::cerr << "). Skipped." << std::endl;
@@ -282,7 +278,11 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures) {
     }
     
     for (std::vector<Polygon>::iterator currentPolygon = polygonsVector.begin(); currentPolygon != polygonsVector.end(); currentPolygon++) {
-      PolygonHandle *handle = new PolygonHandle(*f);
+      PolygonHandle *handle;
+      if (spatialextent == true)
+        handle = &_extenttag;
+      else
+        handle = new PolygonHandle(*f);
       polygons.push_back(handle);
 
       // Create edges vector for this handle
@@ -374,7 +374,7 @@ bool PlanarPartition::buildPP() {
     return false;
   }
   
-  std::cout << "Building the PP (tagging the triangles)..." << std::endl;
+  std::cout << "Building the PP (tagging the triangles)...";
   std::stack<Triangulation::Face_handle> stack;
   Triangulation::Vertices_in_constraint_iterator previousVertex, currentVertex;
   Triangulation::Face_handle currentFace;
@@ -445,10 +445,11 @@ bool PlanarPartition::buildPP() {
     // Free memory for inner boundary
     edgesToTag[currentPolygon].second.clear();
     // Expand the tags: special handling of the spatialExtent tag if needed
-    if ( (hasExtent == true) && (currentPolygon+1 == edgesToTag.size()) )
-      tagStack(stack, &extenttag);
-    else
-      tagStack(stack, polygons[currentPolygon]);
+    tagStack(stack, polygons[currentPolygon]);
+//    if ( (hasExtent == true) && (currentPolygon+1 == edgesToTag.size()) )
+//      tagStack(stack, &_extenttag);
+//    else
+//      tagStack(stack, polygons[currentPolygon]);
   }
   
   // Free remaining memory
@@ -460,13 +461,14 @@ bool PlanarPartition::buildPP() {
   
   state = TAGGED;
   isValid();
+  std::cout << " done." << std::endl;
   return true;
 }
 
 
 void PlanarPartition::removeAllExtentTags() {
 	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
-		if (currentFace->info().hasTag(&extenttag)) {
+		if (currentFace->info().hasTag(&_extenttag)) {
       currentFace->info().removeAllTags();
 			currentFace->info().addTag(&universetag);
 		}
@@ -512,7 +514,7 @@ void PlanarPartition::repairSpatialExtent() {
         //-- check if the gap is neighbouring to an extent
         for (std::set<Triangulation::Face_handle>::const_iterator cur = facesInRegion.begin(); cur != facesInRegion.end(); cur++) {
           for (int i = 0; i < 3; i++) {
-            if ( (*cur)->neighbor(i)->info().hasTag(&extenttag) == true) {
+            if ( (*cur)->neighbor(i)->info().hasTag(&_extenttag) == true) {
               extentgap = true;
               break;
             }
@@ -528,14 +530,14 @@ void PlanarPartition::repairSpatialExtent() {
             if (numberOfTags == 0) continue;
             if (numberOfTags == 1) {
               tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();
-              if ( (tagToAssign != &universetag) && (tagToAssign != &extenttag) )
+              if ( (tagToAssign != &universetag) && (tagToAssign != &_extenttag) )
                 break;
             }
             else {
               std::list<PolygonHandle *>::const_iterator randomTag = static_cast<MultiPolygonHandle *>((*randomFace)->neighbor(neighbourIndex)->info().getTags())->getHandles()->begin();
               std::advance(randomTag, rand()%numberOfTags);
               tagToAssign = *randomTag;
-              if ( (tagToAssign != &universetag) && (tagToAssign != &extenttag) )
+              if ( (tagToAssign != &universetag) && (tagToAssign != &_extenttag) )
                 break;
             }
           }
@@ -545,8 +547,8 @@ void PlanarPartition::repairSpatialExtent() {
       else {
         //-- an overlap
         std::set<Triangulation::Face_handle>::iterator cur = facesInRegion.begin();
-        if ( (*cur)->info().hasTag(&extenttag) ) {
-          tagToAssign = &extenttag;
+        if ( (*cur)->info().hasTag(&_extenttag) ) {
+          tagToAssign = &_extenttag;
           errorrelatedtoextent = true;
         }
       }
