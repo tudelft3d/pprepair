@@ -1943,7 +1943,7 @@ void PlanarPartition::getListOverlappingPolygons(std::ostream &ostr) {
         tmp.push_back(fid);
       }
       for (std::list<int>::iterator i = tmp.begin(); i != tmp.end(); i++) {
-        auto search = overlaps.find(*i);
+        std::map<int, std::set<int> >::iterator search = overlaps.find(*i);
         if (search != overlaps.end()) {
           (search->second).insert(tmp.begin(), tmp.end());
         }
