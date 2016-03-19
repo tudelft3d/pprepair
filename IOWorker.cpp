@@ -1266,7 +1266,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
 #endif
 	if (driver == NULL) {
-		std::cout << "\tError: OGR " + DRIVER + " driver not found." << std::endl;
+		std::cout << "\tError: OGR " << DRIVER << " driver not found." << std::endl;
 		return false;
 	}
 	
