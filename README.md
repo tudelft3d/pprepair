@@ -28,7 +28,7 @@ To compile pprepair, you first need to install the free libraries [CGAL](http://
 
 To install it, run:
 
-    $ cmake .
+    $ cmake -DDRIVER="ESRI Shapefile" .
     $ make
     $ ./pprepair -i inputfile -o outputfile -fix
 
