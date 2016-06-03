@@ -97,6 +97,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
     // Reads all features in this layer
 		OGRFeature *feature;
 		while ((feature = dataLayer->GetNextFeature()) != NULL) {
+      if (!feature->GetGeometryRef()) continue;
 			
 			// STEP 1: Get polygons from input
 			std::vector<std::list<Point> > outerRingsList;
