@@ -54,8 +54,9 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
     OGRLayer *dataLayer = dataSource->GetLayer(currentLayer);
     dataLayer->ResetReading();
     OGRSpatialReference* tmp = dataLayer->GetSpatialRef();
-    if ( (tmp != NULL) && (spatialReference != NULL) )
-      spatialReference = tmp->CloneGeogCS();
+    if ( (tmp != NULL) && (spatialReference != NULL) ) {
+      spatialReference = tmp->Clone();
+    }
 		
 		unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
 		std::cout << "\tReading layer #" << currentLayer+1 << " (" << numberOfPolygons << " polygons)...";
