@@ -53,7 +53,11 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
 		return false;
 	}
   std::cout << "Adding spatial extent dataset: " << file << std::endl;
-  OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
+  #if GDAL_VERSION_MAJOR < 2
+    OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
+  #else
+    GDALDataset *dataSource = (GDALDataset*) GDALOpenEx(file.c_str(), GDAL_OF_READONLY, NULL, NULL, NULL);
+  #endif
 	if (dataSource == NULL) {
 		std::cerr << "Error: Could not open file." << std::endl;
 		return false;
@@ -104,7 +108,11 @@ bool PlanarPartition::addOGRdatasetExtent(std::string &file) {
   ls.push_back(feature->Clone());
   allFeatureDefns.push_back(feature->GetDefnRef());
   addFeatures(ls, true);
-  OGRDataSource::DestroyDataSource(dataSource);
+  #if GDAL_VERSION_MAJOR < 2
+  	OGRDataSource::DestroyDataSource(dataSource);
+  #else
+  	GDALClose(dataSource);
+  #endif
   hasExtent = true;
   return true;
 }
@@ -325,7 +333,11 @@ bool PlanarPartition::addFeatures(std::vector<OGRFeature*> &lsOGRFeatures, bool 
 
 
 bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> &lsOGRFeatures) {
-	OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
+  #if GDAL_VERSION_MAJOR < 2
+    OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file.c_str(), false);
+  #else
+    GDALDataset *dataSource = (GDALDataset*) GDALOpenEx(file.c_str(), GDAL_OF_READONLY, NULL, NULL, NULL);
+  #endif
 	if (dataSource == NULL) {
 		std::cerr << "Error: Could not open file." << std::endl;
 		return false;
@@ -358,7 +370,11 @@ bool PlanarPartition::getOGRFeatures(std::string file, std::vector<OGRFeature*> 
     }
   }
   // Free OGR data source
-  OGRDataSource::DestroyDataSource(dataSource);
+  #if GDAL_VERSION_MAJOR < 2
+    OGRDataSource::DestroyDataSource(dataSource);
+  #else
+    GDALClose(dataSource);
+  #endif
 //  std::cout << "\tdone." << std::endl;
   return true;
 }
@@ -1724,28 +1740,53 @@ bool PlanarPartition::exportPolygonsSHP(std::string &folder) {
   }
 
 //-- 2. create new a SHP for each one
-  std::map<OGRFeatureDefn*,OGRDataSource*> allshps;
-  std::map<OGRFeatureDefn*,OGRDataSource*>::iterator allshpsit;
+  #if GDAL_VERSION_MAJOR < 2
+    std::map<OGRFeatureDefn*,OGRDataSource*> allshps;
+    std::map<OGRFeatureDefn*,OGRDataSource*>::iterator allshpsit;
+  #else
+    std::map<OGRFeatureDefn*,GDALDataset*> allshps;
+    std::map<OGRFeatureDefn*,GDALDataset*>::iterator allshpsit;
+  #endif
   for (std::set<OGRFeatureDefn*>::iterator it = allFDefs.begin(); it != allFDefs.end(); ++it) {
     const char *driverName = "ESRI Shapefile";
-    OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
+    #if GDAL_VERSION_MAJOR < 2
+  	  OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
+    #else
+ 	    GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
+    #endif
     if (driver == NULL) {
       std::cout << "\tError: OGR Shapefile driver not found." << std::endl;
       return false;
     }
     std::string tmp = (*it)->GetName();
     std::string outname = folder + "/" + tmp + ".r.shp";
-    OGRDataSource *dataSource = driver->Open(outname.c_str(), false);
+    #if GDAL_VERSION_MAJOR < 2
+  	  OGRDataSource *dataSource = driver->Open(outname.c_str(), false);
+    #else
+      GDALDataset *dataSource = (GDALDataset*) GDALOpenEx(outname.c_str(), GDAL_OF_READONLY, NULL, NULL, NULL);
+    #endif
     if (dataSource != NULL) {
       std::cout << "\tOverwriting file..." << std::endl;
-      if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
-        std::cout << "\tError: Couldn't erase file with same name." << std::endl;
-        return false;
+      #if GDAL_VERSION_MAJOR < 2
+        if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
+      #else
+        if (driver->Delete(outname.c_str())!= CE_None) {
+      #endif
+          std::cout << "\tError: Couldn't erase file with same name." << std::endl;
+          return false;
       }
-      OGRDataSource::DestroyDataSource(dataSource);
+      #if GDAL_VERSION_MAJOR < 2
+        OGRDataSource::DestroyDataSource(dataSource);
+      #else
+      	GDALClose(dataSource);
+      #endif
     }
     std::cout << "\tWriting file " << outname << std::endl;
-    dataSource = driver->CreateDataSource(outname.c_str(), NULL);
+    #if GDAL_VERSION_MAJOR < 2
+  	  dataSource = driver->CreateDataSource(outname.c_str(), NULL);
+    #else
+    	dataSource = driver->Create(outname.c_str(),0,0,0,GDT_Unknown,NULL);
+    #endif
     if (dataSource == NULL) {
       std::cout << "\tError: Could not create file." << std::endl;
       return false;
@@ -1800,7 +1841,11 @@ bool PlanarPartition::exportPolygonsSHP(std::string &folder) {
 	}
   //-- clear memory for all the created SHP
   for (allshpsit = allshps.begin(); allshpsit != allshps.end(); ++allshpsit) {
-    OGRDataSource::DestroyDataSource(allshpsit->second);
+    #if GDAL_VERSION_MAJOR < 2
+  	  OGRDataSource::DestroyDataSource(allshpsit->second);
+    #else
+ 	    GDALClose(allshpsit->second);
+    #endif
   }
 	std::cout << "Polygons exported (" << time(NULL)-thisTime << " s)." << std::endl;
   return true;
@@ -1815,23 +1860,43 @@ bool PlanarPartition::exportTriangulation(std::string &file) {
   
   std::cout << "Exporting triangulation as a SHP..." << std::endl;
   
-	const char *driverName = "ESRI Shapefile";
-	OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
+  const char *driverName = "ESRI Shapefile";
+  #if GDAL_VERSION_MAJOR < 2
+  	OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
+  #else
+  	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
+  #endif
 	if (driver == NULL) {
 		std::cout << "Driver not found." << std::endl;
 		return false;
 	}
-	OGRDataSource *dataSource = driver->Open(file.c_str(), false);
+	#if GDAL_VERSION_MAJOR < 2
+  	OGRDataSource *dataSource = driver->Open(file.c_str(), false);
+ #else
+ 	  GDALDataset *dataSource = (GDALDataset*) GDALOpenEx(file.c_str(), GDAL_OF_READONLY, NULL, NULL, NULL);
+ #endif
 	if (dataSource != NULL) {
 		std::cout << "Erasing current file..." << std::endl;
-		if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
-			std::cout << "Couldn't erase current file." << std::endl;
-			return false;
+		#if GDAL_VERSION_MAJOR < 2
+  		if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
+    #else
+    	if (driver->Delete(file.c_str())!= CE_None) {
+    #endif
+        std::cout << "Couldn't erase current file." << std::endl;
+        return false;
 		}
-    OGRDataSource::DestroyDataSource(dataSource);
+    #if GDAL_VERSION_MAJOR < 2
+      OGRDataSource::DestroyDataSource(dataSource);
+    #else
+    	GDALClose(dataSource);
+    #endif
 	}
-	std::cout << "Writing file " << file << "..." << std::endl;
-	dataSource = driver->CreateDataSource(file.c_str(), NULL);
+  std::cout << "Writing file " << file << "..." << std::endl;
+  #if GDAL_VERSION_MAJOR < 2
+    dataSource = driver->CreateDataSource(file.c_str(), NULL);
+  #else
+    dataSource = driver->Create(file.c_str(),0,0,0,GDT_Unknown,NULL);
+  #endif
 	if (dataSource == NULL) {
 		std::cout << "Could not create file." << std::endl;
 		return false;
@@ -1872,7 +1937,11 @@ bool PlanarPartition::exportTriangulation(std::string &file) {
       std::cout << "Could not create feature." << std::endl;
 		OGRFeature::DestroyFeature(feature);
 	}
-	OGRDataSource::DestroyDataSource(dataSource);
+  #if GDAL_VERSION_MAJOR < 2
+    OGRDataSource::DestroyDataSource(dataSource);
+  #else
+    GDALClose(dataSource);
+  #endif
 	return true;
 }
 
@@ -2086,22 +2155,42 @@ bool PlanarPartition::exportProblemRegionsAsSHP(std::string &file, double thinne
   getProblemRegionsAsOGR(holes, overlaps);
   
   const char *driverName = "ESRI Shapefile";
-  OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
+  #if GDAL_VERSION_MAJOR < 2
+    OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
+  #else
+  	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
+  #endif
   if (driver == NULL) {
     std::cout << "Driver not found." << std::endl;
     return false;
   }
-  OGRDataSource *dataSource = driver->Open(file.c_str(), false);
+  #if GDAL_VERSION_MAJOR < 2
+  	OGRDataSource *dataSource = driver->Open(file.c_str(), false);
+ #else
+ 	  GDALDataset *dataSource = (GDALDataset*) GDALOpenEx(file.c_str(), GDAL_OF_READONLY, NULL, NULL, NULL);
+ #endif
   if (dataSource != NULL) {
     std::cout << "Erasing current file..." << std::endl;
-    if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
-      std::cout << "Couldn't erase current file." << std::endl;
-      return false;
+    #if GDAL_VERSION_MAJOR < 2
+      if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
+    #else
+      if (driver->Delete(file.c_str())!= CE_None) {
+    #endif
+        std::cout << "Couldn't erase current file." << std::endl;
+        return false;
     }
-    OGRDataSource::DestroyDataSource(dataSource);
+    #if GDAL_VERSION_MAJOR < 2
+      OGRDataSource::DestroyDataSource(dataSource);
+    #else
+      GDALClose(dataSource);
+    #endif
   }
   std::cout << "Writing file " << file << "..." << std::endl;
-  dataSource = driver->CreateDataSource(file.c_str(), NULL);
+  #if GDAL_VERSION_MAJOR < 2
+  	  dataSource = driver->CreateDataSource(file.c_str(), NULL);
+  #else
+    dataSource = driver->Create(file.c_str(),0,0,0,GDT_Unknown,NULL);
+  #endif
   if (dataSource == NULL) {
     std::cout << "Could not create file." << std::endl;
     return false;
@@ -2162,7 +2251,11 @@ bool PlanarPartition::exportProblemRegionsAsSHP(std::string &file, double thinne
       OGRFeature::DestroyFeature(feature);
     }
   }
-  OGRDataSource::DestroyDataSource(dataSource);
+  #if GDAL_VERSION_MAJOR < 2
+    OGRDataSource::DestroyDataSource(dataSource);
+  #else
+    GDALClose(dataSource);
+  #endif
   return true;
 }
 
