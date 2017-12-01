@@ -157,6 +157,7 @@ bool PlanarPartition::duplicateVerticesInPolygon(OGRPolygon* geometry) {
     if (a == b) {
       valid = false;
       std::cout << "Invalid polygon: duplicate vertices." << std::endl;
+      std::cout << "Problem at (" << geometry->getExteriorRing()->getX(p) << ", " << geometry->getExteriorRing()->getY(p) << ")" << std::endl;
       break;
     }
   }
@@ -168,6 +169,7 @@ bool PlanarPartition::duplicateVerticesInPolygon(OGRPolygon* geometry) {
       if (a == b) {
         valid = false;
         std::cout << "Invalid polygon: duplicate vertices." << std::endl;
+        std::cout << "Problem at (" << geometry->getInteriorRing(r)->getX(p) << ", " << geometry->getInteriorRing(r)->getY(p) << ")" << std::endl;
         break;
       }
     }
@@ -179,7 +181,7 @@ bool PlanarPartition::duplicateVerticesInPolygon(OGRPolygon* geometry) {
 bool PlanarPartition::validateSinglePolygons(std::vector<OGRFeature*> &lsOGRFeatures) {
   std::cout << "\tValidating individually every polygon..." << std::endl;
   bool allvalid = true;
-  int idno = 0;
+  int idno = 1;
   for (std::vector<OGRFeature*>::iterator it = lsOGRFeatures.begin() ; it != lsOGRFeatures.end(); ++it) {
     switch((*it)->GetGeometryRef()->getGeometryType()) {
       case wkbPolygon:
