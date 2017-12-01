@@ -157,6 +157,9 @@ bool PlanarPartition::duplicateVerticesInPolygon(OGRPolygon* geometry) {
     if (a == b) {
       valid = false;
       std::cout << "Invalid polygon: duplicate vertices." << std::endl;
+      char *outputWKT;
+      geometry->exportToWkt(&outputWKT);
+      std::cout << outputWKT << std::endl;
       break;
     }
   }
