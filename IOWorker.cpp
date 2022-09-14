@@ -1,6 +1,6 @@
 /*
- Copyright (c) 2009-2013,
- Ken Arroyo Ohori    g.a.k.arroyoohori@tudelft.nl
+ Copyright (c) 2009-2022,
+ Ken Arroyo Ohori    k.ohori@tudelft.nl
  Hugo Ledoux         h.ledoux@tudelft.nl
  Martijn Meijers     b.m.meijers@tudelft.nl
  All rights reserved.
@@ -1261,14 +1261,14 @@ bool IOWorker::reconstructPolygons(Triangulation &triangulation, std::vector<std
 bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons, const char *file, bool withProvenance) {
 	
 	// Prepare file
-	const char *driverName = DRIVER;
+	const char *driverName = "GeoJSON";
 #if GDAL_VERSION_MAJOR < 2
 	OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
 #else
 	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
 #endif
 	if (driver == NULL) {
-		std::cout << "\tError: OGR " << DRIVER << " driver not found." << std::endl;
+		std::cout << "\tError: OGR GeoJSON driver not found." << std::endl;
 		return false;
 	}
 	
@@ -1402,7 +1402,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 bool IOWorker::exportTriangulation(Triangulation &t, const char *file, bool withNumberOfTags, bool withFields, bool withProvenance) {
 	
 	// Prepare file
-	const char *driverName = DRIVER;
+	const char *driverName = "GeoJSON";
 #if GDAL_VERSION_MAJOR < 2
 	OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
 #else
