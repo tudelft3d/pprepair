@@ -41,7 +41,7 @@ int main(int argc, const char *argv[]) {
   std::list<std::pair<std::string, int> > inputFiles;
   std::string outputFile, outputFileWithProvenance, taggedTriangulationOutputFile, triangulationOutputFile, triangulationOutputFileWithProvenance;
   bool makeHolesValid = false, splitRegions = false, alsoUniverse = false, matchSchemata = false, bigData = false;
-  double splitRegionsRatio;
+  double splitRegionsRatio = 0.0;
   std::list<std::pair<RepairMethod, std::string> > repairMethods;
   
   // Process help argument

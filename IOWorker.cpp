@@ -50,7 +50,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
       spatialReference = tmp->Clone();
     }
 		
-		unsigned int numberOfPolygons = dataLayer->GetFeatureCount(true);
+		long long numberOfPolygons = dataLayer->GetFeatureCount(true);
 		std::cout << "\tReading layer #" << currentLayer+1 << " (" << numberOfPolygons << " polygons)...";
 		polygons.reserve(polygons.size()+numberOfPolygons);
     
@@ -1239,10 +1239,10 @@ bool IOWorker::reconstructPolygons(Triangulation &triangulation, std::vector<std
 bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons, const char *file, bool withProvenance) {
 	
 	// Prepare file
-	const char *driverName = "GeoJSON";
+	const char *driverName = "ESRI Shapefile";
 	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
 	if (driver == NULL) {
-		std::cout << "\tError: OGR GeoJSON driver not found." << std::endl;
+		std::cout << "\tError: ESRI Shapefile driver not found." << std::endl;
 		return false;
 	}
 	
@@ -1274,7 +1274,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 		for (std::vector<char *>::iterator currentFileName = fileNames.begin(); currentFileName != fileNames.end(); ++currentFileName) {
 			if (strlen(*currentFileName) > longest) longest = strlen(*currentFileName);
 		} OGRFieldDefn filenameField("File", OFTString);
-		filenameField.SetWidth(longest);
+		filenameField.SetWidth((int)longest);
 		if (layer->CreateField(&filenameField) != OGRERR_NONE) {
 			std::cout << "\tError: Could not create field File." << std::endl;
 			return false;
@@ -1356,7 +1356,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 bool IOWorker::exportTriangulation(Triangulation &t, const char *file, bool withNumberOfTags, bool withFields, bool withProvenance) {
 	
 	// Prepare file
-	const char *driverName = "GeoJSON";
+	const char *driverName = "ESRI Shapefile";
 	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
 	if (driver == NULL) {
 		std::cout << "Driver not found." << std::endl;
@@ -1395,11 +1395,11 @@ bool IOWorker::exportTriangulation(Triangulation &t, const char *file, bool with
 	}
 	
 	if (withProvenance) {
-		unsigned int longest = 0;
+		unsigned long longest = 0;
 		for (std::vector<char *>::iterator currentFileName = fileNames.begin(); currentFileName != fileNames.end(); ++currentFileName) {
 			if (strlen(*currentFileName) > longest) longest = strlen(*currentFileName);
 		} OGRFieldDefn filenameField("File", OFTString);
-		filenameField.SetWidth(longest);
+		filenameField.SetWidth((int)longest);
 		if (layer->CreateField(&filenameField) != OGRERR_NONE) {
 			std::cout << "Could not create field Filename." << std::endl;
 			return false;
@@ -1707,7 +1707,7 @@ void IOWorker::testRings(std::vector<Ring *> &outerRings, std::vector<Ring *> &i
 	std::vector<std::vector<Triangulation::Vertex_handle> > ringsToTag;
 	std::vector<PolygonHandle *> tags;
 	tags.reserve(outerRings.size());
-	std::map<PolygonHandle *, unsigned int> tagsMap;
+	std::map<PolygonHandle *, unsigned long> tagsMap;
 	
 	// STEP 1: Put the edges from the outer rings in the triangulation and save them for tagging
 	for (std::vector<Ring *>::iterator currentRing = outerRings.begin(); currentRing != outerRings.end(); ++currentRing) {
@@ -1745,7 +1745,7 @@ void IOWorker::testRings(std::vector<Ring *> &outerRings, std::vector<Ring *> &i
 	
 	// STEP 3: Check where inner rings belong
 	for (std::vector<Ring *>::iterator currentRing = innerRings.begin(); currentRing != innerRings.end(); ++currentRing) {
-		std::set<unsigned int> addedTo;
+		std::set<unsigned long> addedTo;
 		for (Ring::Edge_const_iterator currentEdge = (*currentRing)->edges_begin(); currentEdge != (*currentRing)->edges_end(); ++currentEdge) {
 			Triangulation::Locate_type locateType;
 			int locateIndex;
@@ -1754,7 +1754,7 @@ void IOWorker::testRings(std::vector<Ring *> &outerRings, std::vector<Ring *> &i
 			if (locateType == Triangulation::FACE) {
 				PolygonHandle *tag = location->info().getTags();
 				if (tagsMap.count(tag) > 0) {
-					unsigned int tagIndex = tagsMap[tag];
+					unsigned long tagIndex = tagsMap[tag];
 					if (addedTo.count(tagIndex) == 0) {
 						addedTo.insert(tagIndex);
 						classification[tagIndex].push_back(**currentRing);
