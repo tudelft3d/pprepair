@@ -27,11 +27,7 @@ IOWorker::IOWorker() {
 
 bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag, const char *file, unsigned int schemaIndex) {
   // Open file
-#if GDAL_VERSION_MAJOR < 2
-	OGRDataSource *dataSource = OGRSFDriverRegistrar::Open(file, false);
-#else
 	GDALDataset *dataSource = (GDALDataset*) GDALOpenEx(file, GDAL_OF_READONLY, NULL, NULL, NULL);
-#endif
 	if (dataSource == NULL) {
 		std::cerr << "Error: Could not open file." << std::endl;
 		return false;
@@ -41,11 +37,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
 	strcpy(name, file);
 	fileNames.push_back(name);
 	std::cout << "\tPath: " << name << std::endl;
-#if GDAL_VERSION_MAJOR < 2
-	std::cout << "\tType: " << dataSource->GetDriver()->GetName() << std::endl;
-#else
 	std::cout << "\tType: " << dataSource->GetDriverName() << std::endl;
-#endif
 	int numberOfLayers = dataSource->GetLayerCount();
 	std::cout << "\tLayers: " << numberOfLayers << std::endl;
   
@@ -326,11 +318,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
   }
   
   // Free OGR data source
-#if GDAL_VERSION_MAJOR < 2
-	OGRDataSource::DestroyDataSource(dataSource);
-#else
 	GDALClose(dataSource);
-#endif
   
   return true;
 }
@@ -1252,43 +1240,23 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 	
 	// Prepare file
 	const char *driverName = "GeoJSON";
-#if GDAL_VERSION_MAJOR < 2
-	OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
-#else
 	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
-#endif
 	if (driver == NULL) {
 		std::cout << "\tError: OGR GeoJSON driver not found." << std::endl;
 		return false;
 	}
 	
-#if GDAL_VERSION_MAJOR < 2
-	OGRDataSource *dataSource = driver->Open(file, false);
-#else
 	GDALDataset *dataSource = (GDALDataset*) GDALOpenEx(file, GDAL_OF_READONLY, NULL, NULL, NULL);
-#endif
 	if (dataSource != NULL) {
 		std::cout << "\tOverwriting file..." << std::endl;
-#if GDAL_VERSION_MAJOR < 2
-		if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
-#else
 		if (driver->Delete(file)!= CE_None) {
-#endif
 			std::cout << "\tError: Couldn't erase file with same name." << std::endl;
 			return false;
-#if GDAL_VERSION_MAJOR < 2
-		} OGRDataSource::DestroyDataSource(dataSource);
-#else
 		} GDALClose(dataSource);
-#endif
 	}
 	
 	std::cout << "\tWriting file... " << std::endl;
-#if GDAL_VERSION_MAJOR < 2
-	dataSource = driver->CreateDataSource(file, NULL);
-#else
 	dataSource = driver->Create(file,0,0,0,GDT_Unknown,NULL);
-#endif
 	if (dataSource == NULL) {
 		std::cout << "\tError: Could not create file." << std::endl;
 		return false;
@@ -1302,7 +1270,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 	
 	// Set up the fields that there will be
 	if (withProvenance) {
-		unsigned int longest = 0;
+		unsigned long longest = 0;
 		for (std::vector<char *>::iterator currentFileName = fileNames.begin(); currentFileName != fileNames.end(); ++currentFileName) {
 			if (strlen(*currentFileName) > longest) longest = strlen(*currentFileName);
 		} OGRFieldDefn filenameField("File", OFTString);
@@ -1380,11 +1348,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 	}
 	
 	// Free OGR data source
-#if GDAL_VERSION_MAJOR < 2
-	OGRDataSource::DestroyDataSource(dataSource);
-#else
 	GDALClose(dataSource);
-#endif
 	
 	return true;
 }
@@ -1393,43 +1357,23 @@ bool IOWorker::exportTriangulation(Triangulation &t, const char *file, bool with
 	
 	// Prepare file
 	const char *driverName = "GeoJSON";
-#if GDAL_VERSION_MAJOR < 2
-	OGRSFDriver *driver = OGRSFDriverRegistrar::GetRegistrar()->GetDriverByName(driverName);
-#else
 	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
-#endif
 	if (driver == NULL) {
 		std::cout << "Driver not found." << std::endl;
 		return false;
 	}
 
-#if GDAL_VERSION_MAJOR < 2
-	OGRDataSource *dataSource = driver->Open(file, false);
-#else
 	GDALDataset *dataSource = (GDALDataset*) GDALOpenEx(file, GDAL_OF_READONLY, NULL, NULL, NULL);
-#endif
 	if (dataSource != NULL) {
 		std::cout << "Erasing current file..." << std::endl;
-#if GDAL_VERSION_MAJOR < 2
-		if (driver->DeleteDataSource(dataSource->GetName())!= OGRERR_NONE) {
-#else
 		if (driver->Delete(file)!= CE_None) {
-#endif
 			std::cout << "Couldn't erase current file." << std::endl;
 			return false;
-#if GDAL_VERSION_MAJOR < 2
-		} OGRDataSource::DestroyDataSource(dataSource);
-#else
 		} GDALClose(dataSource);
-#endif
 	}
 	
 	std::cout << "Writing file... " << std::endl;
-#if GDAL_VERSION_MAJOR < 2
-	dataSource = driver->CreateDataSource(file, NULL);
-#else
 	dataSource = driver->Create(file,0,0,0,GDT_Unknown,NULL);
-#endif
 	if (dataSource == NULL) {
 		std::cout << "Could not create file." << std::endl;
 		return false;
@@ -1544,11 +1488,7 @@ bool IOWorker::exportTriangulation(Triangulation &t, const char *file, bool with
 	}
 	
 	// Free OGR data source
-#if GDAL_VERSION_MAJOR < 2
-	OGRDataSource::DestroyDataSource(dataSource);
-#else
 	GDALClose(dataSource);
-#endif
 	
 	return true;
 }
