@@ -193,7 +193,7 @@ Field * PolygonHandle::getField(unsigned int i) {
 	return fields[i];
 }
 
-unsigned int PolygonHandle::getNumberOfFields() {
+unsigned long PolygonHandle::getNumberOfFields() {
 	return fields.size();
 }
 
@@ -250,6 +250,6 @@ const std::list<PolygonHandle *> *MultiPolygonHandle::getHandles() {
 	return &handles;
 }
 
-unsigned int MultiPolygonHandle::numberOfHandles() {
+unsigned long MultiPolygonHandle::numberOfHandles() {
 	return handles.size();
 }

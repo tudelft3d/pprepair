@@ -105,7 +105,7 @@ public:
 	void addField(Field *field);
   Field * getSchemaField();
   Field * getField(unsigned int i);
-	unsigned int getNumberOfFields();
+	unsigned long getNumberOfFields();
   
   // Checking whether it's a MultiPolygonHandle
 	virtual const bool isMultiPolygonHandle();
@@ -136,7 +136,7 @@ public:
   bool hasHandle(PolygonHandle *handle);
   void addHandle(PolygonHandle *handle);
   const std::list<PolygonHandle *> *getHandles();
-  unsigned int numberOfHandles();
+  unsigned long numberOfHandles();
 private:
 	std::list<PolygonHandle *> handles;
 };
