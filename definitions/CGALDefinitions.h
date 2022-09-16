@@ -90,7 +90,10 @@ typedef Triangulation::Segment Segment;
 typedef CGAL::Polygon_2<K> Ring;
 
 // Non CGAL types
-typedef std::vector<std::pair<std::vector<Triangulation::Vertex_handle>, std::vector<std::vector<Triangulation::Vertex_handle> > > > TaggingVector;
+//typedef std::vector<std::pair<std::vector<Triangulation::Vertex_handle>,
+//                              std::vector<std::vector<Triangulation::Vertex_handle> > > > TaggingVector;
+typedef std::vector<std::pair<std::vector<Triangulation::Constraint_id>, // outer ring
+                              std::vector<std::vector<Triangulation::Constraint_id>>>> TaggingVector; // inner rings
 
 // Polygon type to avoid CGAL's Polygon_with_holes_2
 class Polygon {

@@ -292,7 +292,7 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
 				copyFields(feature, handle);
 				
 				// Create edges vector for this handle
-				edgesToTag.push_back(std::pair<std::vector<Triangulation::Vertex_handle>, std::vector<std::vector<Triangulation::Vertex_handle> > >());
+				edgesToTag.push_back(std::pair<std::vector<Triangulation::Constraint_id>, std::vector<std::vector<Triangulation::Constraint_id>>>());
 				
 				// Insert edges into the triangulation and edges vector
 				for (Ring::Edge_const_iterator currentEdge = currentPolygon->outer_boundary().edges_begin();
@@ -301,18 +301,18 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
 					Triangulation::Vertex_handle sourceVertex = triangulation.insert(currentEdge->source(), startingSearchFace);
           startingSearchFace = triangulation.incident_faces(sourceVertex);
 					Triangulation::Vertex_handle targetVertex = triangulation.insert(currentEdge->target(), startingSearchFace);
-					triangulation.insert_constraint(sourceVertex, targetVertex);
+					Triangulation::Constraint_id cid = triangulation.insert_constraint(sourceVertex, targetVertex);
           startingSearchFace = triangulation.incident_faces(targetVertex);
-					edgesToTag.back().first.push_back(sourceVertex);
+					edgesToTag.back().first.push_back(cid);
 				} for (Polygon::Hole_const_iterator currentRing = currentPolygon->holes_begin(); currentRing != currentPolygon->holes_end(); ++currentRing) {
-					edgesToTag.back().second.push_back(std::vector<Triangulation::Vertex_handle>());
+					edgesToTag.back().second.push_back(std::vector<Triangulation::Constraint_id>());
 					for (Ring::Edge_const_iterator currentEdge = currentRing->edges_begin(); currentEdge != currentRing->edges_end(); ++currentEdge) {
 						Triangulation::Vertex_handle sourceVertex = triangulation.insert(currentEdge->source(), startingSearchFace);
             startingSearchFace = triangulation.incident_faces(sourceVertex);
 						Triangulation::Vertex_handle targetVertex = triangulation.insert(currentEdge->target(), startingSearchFace);
-						triangulation.insert_constraint(sourceVertex, targetVertex);
+            Triangulation::Constraint_id cid = triangulation.insert_constraint(sourceVertex, targetVertex);
             startingSearchFace = triangulation.incident_faces(targetVertex);
-						edgesToTag.back().second.back().push_back(sourceVertex);
+						edgesToTag.back().second.back().push_back(cid);
 					}
 				}
 			}
@@ -340,34 +340,24 @@ bool IOWorker::tagTriangulation(Triangulation &triangulation, TaggingVector &edg
 	std::stack<Triangulation::Face_handle> stack;
 	Triangulation::Vertices_in_constraint_iterator previousVertex, currentVertex;
 	Triangulation::Face_handle currentFace;
+  Triangulation::Constraint_id cid;
 	int incident;
-	bool sameOrder;
 	
 	// Add all edges of a polygon
 	for (unsigned int currentPolygon = 0; currentPolygon < edgesToTag.size(); ++currentPolygon) {
 		
 		// Outer boundary
 		for (unsigned int currentEdge = 0; currentEdge < edgesToTag[currentPolygon].first.size(); ++currentEdge) {
-			previousVertex = triangulation.vertices_in_constraint_begin(edgesToTag[currentPolygon].first[currentEdge],
-                                                                  edgesToTag[currentPolygon].first[(currentEdge+1)%edgesToTag[currentPolygon].first.size()]);
-			// Check if the returned order is the same
-			if ((*previousVertex)->point() == edgesToTag[currentPolygon].first[currentEdge]->point()) sameOrder = true;
-			else sameOrder = false;
+      cid = edgesToTag[currentPolygon].first[currentEdge];
+			previousVertex = triangulation.vertices_in_constraint_begin(cid);
 			currentVertex = previousVertex;
 			++currentVertex;
-			while (currentVertex != triangulation.vertices_in_constraint_end(edgesToTag[currentPolygon].first[currentEdge],
-                                                                       edgesToTag[currentPolygon].first[(currentEdge+1)%edgesToTag[currentPolygon].first.size()])) {
-				if (sameOrder) {
-					if (!triangulation.is_edge(*previousVertex, *currentVertex, currentFace, incident)) {
-						std::cout << "\tError: Cannot find adjoining face to an edge from the edge list!" << std::endl;
-						return false;
-					}
-				} else {
-					if (!triangulation.is_edge(*currentVertex, *previousVertex, currentFace, incident)) {
-						std::cout << "\tError: Cannot find adjoining face to an edge from the edge list!" << std::endl;
-						return false;
-					}
-				} previousVertex = currentVertex;
+			while (currentVertex != triangulation.vertices_in_constraint_end(cid)) {
+        if (!triangulation.is_edge(*previousVertex, *currentVertex, currentFace, incident)) {
+          std::cout << "\tError: Cannot find adjoining face to an edge from the edge list!" << std::endl;
+          return false;
+        }
+				previousVertex = currentVertex;
 				++currentVertex;
 				stack.push(currentFace);
 			}
@@ -1597,7 +1587,8 @@ std::vector<Ring *> IOWorker::splitRing(Ring &ring) {
 		if (ringTriangulation.is_edge(source, target, correspondingFace, correspondingVertex)) {
 			if (ringTriangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(correspondingFace, correspondingVertex))) {
         //std::cout << "Removing duplicate constraint <" << *source << ", " << *target << ">" << std::endl;
-				ringTriangulation.remove_constraint(source, target);
+        Triangulation::Constraint_id cid = ringTriangulation.insert_constraint(source, target);
+				ringTriangulation.remove_constraint(cid);
 				continue;
 			}
 		} //std::cout << "Inserting constraint <" << *source << ", " << *target << ">" << std::endl;
@@ -1620,7 +1611,8 @@ std::vector<Ring *> IOWorker::splitRing(Ring &ring) {
 			ringTriangulation.is_edge(currentEdge->first.first, currentEdge->first.second, f, i);
       if (ringTriangulation.is_constrained(std::pair<Triangulation::Face_handle, int>(f, i))) {
         //std::cout << "Removing constraint..." << std::endl;
-        ringTriangulation.remove_constraint(currentEdge->first.first, currentEdge->first.second);
+        Triangulation::Constraint_id cid = ringTriangulation.insert_constraint(currentEdge->first.first, currentEdge->first.second);
+        ringTriangulation.remove_constraint(cid);
       } else {
         //std::cout << "Adding constraint..." << std::endl;
         ringTriangulation.insert_constraint(currentEdge->first.first, currentEdge->first.second);
