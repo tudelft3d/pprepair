@@ -26,11 +26,11 @@ pprepair is a command-line program, which we provide as source code. It is very 
 
 To compile pprepair, you first need to install the free libraries [CGAL](http://www.cgal.org) and [GDAL](http://www.gdal.org). [CMake](http://www.cmake.org) is highly recommended. Under Mac, we recommend using [Homebrew](http://brew.sh/) to install CGAL (and all its dependencies), GDAL and CMake.
 
-To install it, run (inside the root of the source tree):
+Then, run (inside the root of the source tree):
 
     $ mkdir build
     $ cd build
-    $ cmake ..
+    $ cmake -DCMAKE_BUILD_TYPE=Release ..
     $ make
 
 After successful compilation, run:
