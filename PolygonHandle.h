@@ -31,11 +31,11 @@ public:
   virtual ~Field() = 0;
   
 	// Find the type of field
-	const virtual OGRFieldType getType() = 0;
+	const virtual OGRFieldType getType() const = 0;
 	
 	// Comparison
-	bool operator<(Field &f);
-	bool operator==(Field &f);
+	bool operator<(Field &f) const;
+	bool operator==(Field &f) const;
 	
 	// Getters
 	virtual const char * getValueAsString();
@@ -54,10 +54,10 @@ public:
 	StringField(const char *v);
 	~StringField();
 	
-	bool operator<(const StringField &f);
-	bool operator==(const StringField &f);
+	bool operator<(const StringField &f) const;
+	bool operator==(const StringField &f) const;
 	
-	const OGRFieldType getType();
+	const OGRFieldType getType() const;
 	const char * getValueAsString();
 	void setValueFromString(const char *v);
 private:
@@ -67,10 +67,10 @@ class DoubleField : public Field {
 public:
 	DoubleField(double v);
 	
-	bool operator<(const DoubleField &f);
-	bool operator==(const DoubleField &f);
+	bool operator<(const DoubleField &f) const;
+	bool operator==(const DoubleField &f) const;
 	
-	const OGRFieldType getType();
+	const OGRFieldType getType() const;
 	double getValueAsDouble();
 	void setValueFromDouble(double v);
 private:
@@ -80,10 +80,10 @@ class IntField : public Field {
 public:
 	IntField(int v);
 	
-	bool operator<(const IntField &f);
-	bool operator==(const IntField &f);
+	bool operator<(const IntField &f) const;
+	bool operator==(const IntField &f) const;
 	
-	const OGRFieldType getType();
+	const OGRFieldType getType() const;
 	int getValueAsInt();
 	void setValueFromInt(int v);
 private:

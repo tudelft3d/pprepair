@@ -672,7 +672,7 @@ bool IOWorker::repairRegionsByRandomNeighbour(Triangulation &triangulation, bool
 				std::set<Triangulation::Face_handle>::iterator randomFace = facesInRegion.begin();
 				std::advance(randomFace, rand()%facesInRegion.size());
 				int neighbourIndex = rand()%3;
-				unsigned int numberOfTags = (*randomFace)->neighbor(neighbourIndex)->info().numberOfTags();
+				unsigned long numberOfTags = (*randomFace)->neighbor(neighbourIndex)->info().numberOfTags();
 				if (numberOfTags == 0) continue;
 				if (numberOfTags == 1) {
 					tagToAssign = (*randomFace)->neighbor(neighbourIndex)->info().getTags();

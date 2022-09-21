@@ -34,7 +34,7 @@ public:
 	bool hasTag(PolygonHandle *handle);
   bool hasNoTags() const;
   bool hasOneTag() const;
-  unsigned int numberOfTags() const;
+  unsigned long numberOfTags() const;
   void addTag(PolygonHandle *handle);
   void removeAllTags();
   void substituteTagsWith(PolygonHandle *handle);

@@ -51,7 +51,7 @@ bool FaceInfo::hasOneTag() const {
 	return true;
 }
 
-unsigned int FaceInfo::numberOfTags() const {
+unsigned long FaceInfo::numberOfTags() const {
 	if (tag == NULL) return 0;
 	if (tag->isMultiPolygonHandle()) return static_cast<MultiPolygonHandle *>(tag)->numberOfHandles();
 	return 1;

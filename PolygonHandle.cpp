@@ -25,19 +25,17 @@ Field::~Field() {
   
 }
 
-bool Field::operator<(Field &f) {
-	const Field *fp = &f;
-	Field *tp = this;
-	if (f.getType() != getType()) return fp < tp;
+bool Field::operator<(Field &f) const {
+  if (f.getType() != getType()) return &f == this;
 	switch (getType()) {
 		case OFTString:
-			return (*(StringField *)fp) < (*(StringField *)tp);
+      return dynamic_cast<const StringField &>(f) < dynamic_cast<const StringField &>(*this);
 			break;
 		case OFTReal:
-			return (*(DoubleField *)fp) < (*(DoubleField *)tp);
+      return dynamic_cast<const DoubleField &>(f) < dynamic_cast<const DoubleField &>(*this);
 			break;
 		case OFTInteger:
-			return (*(IntField *)fp) < (*(IntField *)tp);
+      return dynamic_cast<const IntField &>(f) < dynamic_cast<const IntField &>(*this);
 			break;
 		default:
 			return false;
@@ -45,19 +43,17 @@ bool Field::operator<(Field &f) {
 	}
 }
 
-bool Field::operator==(Field &f) {
-	const Field *fp = &f;
-	Field *tp = this;
-	if (f.getType() != getType()) return fp == tp;
+bool Field::operator==(Field &f) const {
+	if (f.getType() != getType()) return &f == this;
 	switch (getType()) {
 		case OFTString:
-			return (*(StringField *)fp) == (*(StringField *)tp);
+			return dynamic_cast<const StringField &>(f) == dynamic_cast<const StringField &>(*this);
 			break;
 		case OFTReal:
-			return (*(DoubleField *)fp) == (*(DoubleField *)tp);
+      return dynamic_cast<const DoubleField &>(f) == dynamic_cast<const DoubleField &>(*this);
 			break;
 		case OFTInteger:
-			return (*(IntField *)fp) == (*(IntField *)tp);
+      return dynamic_cast<const IntField &>(f) == dynamic_cast<const IntField &>(*this);
 			break;
 		default:
 			return false;
@@ -100,15 +96,15 @@ StringField::~StringField() {
 	free(contents);
 }
 
-bool StringField::operator<(const StringField &f) {
+bool StringField::operator<(const StringField &f) const {
 	return strcmp(f.contents, contents) < 0;
 }
 
-bool StringField::operator==(const StringField &f) {
+bool StringField::operator==(const StringField &f) const {
 	return strcmp(f.contents, contents) == 0;
 }
 
-const OGRFieldType StringField::getType() {
+const OGRFieldType StringField::getType() const {
 	return OFTString;
 }
 
@@ -125,15 +121,15 @@ DoubleField::DoubleField(double v) {
 	setValueFromDouble(v);
 }
 
-bool DoubleField::operator<(const DoubleField &f) {
+bool DoubleField::operator<(const DoubleField &f) const {
 	return f.contents < contents;
 }
 
-bool DoubleField::operator==(const DoubleField &f) {
+bool DoubleField::operator==(const DoubleField &f) const {
 	return f.contents == contents;
 }
 
-const OGRFieldType DoubleField::getType() {
+const OGRFieldType DoubleField::getType() const {
 	return OFTReal;
 }
 
@@ -149,15 +145,15 @@ IntField::IntField(int v) {
 	setValueFromInt(v);
 }
 
-bool IntField::operator<(const IntField &f) {
+bool IntField::operator<(const IntField &f) const {
 	return f.contents < contents;
 }
 
-bool IntField::operator==(const IntField &f) {
+bool IntField::operator==(const IntField &f) const {
 	return f.contents == contents;
 }
 
-const OGRFieldType IntField::getType() {
+const OGRFieldType IntField::getType() const {
 	return OFTInteger;
 }
 
