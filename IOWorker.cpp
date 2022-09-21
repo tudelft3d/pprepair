@@ -1239,10 +1239,20 @@ bool IOWorker::reconstructPolygons(Triangulation &triangulation, std::vector<std
 bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > &outputPolygons, const char *file, bool withProvenance) {
 	
 	// Prepare file
-	const char *driverName = "ESRI Shapefile";
+  std::filesystem::path extension = std::filesystem::path(file).extension();
+	const char *driverName;
+  if (extension.compare(".csv") == 0) driverName = "CSV";
+  else if (extension.compare(".dxf") == 0) driverName = "DXF";
+  else if (extension.compare(".gdb") == 0) driverName = "FileGDB";
+  else if (extension.compare(".json") == 0) driverName = "GeoJSON";
+  else if (extension.compare(".geojson") == 0) driverName = "GeoJSON";
+  else if (extension.compare(".gml") == 0) driverName = "GML";
+  else if (extension.compare(".gpkg") == 0) driverName = "GPKG";
+  else if (extension.compare(".kml") == 0) driverName = "KML";
+  else if (extension.compare(".shp") == 0) driverName = "ESRI Shapefile";
 	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
 	if (driver == NULL) {
-		std::cout << "\tError: ESRI Shapefile driver not found." << std::endl;
+		std::cout << "\tError: " << driverName << " driver not found." << std::endl;
 		return false;
 	}
 	
