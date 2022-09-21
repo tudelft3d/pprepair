@@ -73,6 +73,8 @@ include_directories( ${GDAL_INCLUDE_DIR} )
 
 add_executable( pprepair  FaceInfo.cpp IOWorker.cpp PlanarPartition.cpp PolygonHandle.cpp pprepair.cpp )
 
+set_property(TARGET pprepair PROPERTY CXX_STANDARD 17)
+
 add_to_cached_list( CGAL_EXECUTABLE_TARGETS pprepair )
 
 # Link the executable to CGAL and third-party libraries
