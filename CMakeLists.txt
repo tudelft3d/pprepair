@@ -38,6 +38,8 @@ if ( COMMAND cmake_policy )
   cmake_policy( SET CMP0003 NEW )
 endif()
 
+set( CMAKE_BUILD_TYPE "Release")
+
 # CGAL
 find_package( CGAL REQUIRED )
 
@@ -79,3 +81,5 @@ add_to_cached_list( CGAL_EXECUTABLE_TARGETS pprepair )
 
 # Link the executable to CGAL and third-party libraries
 target_link_libraries(pprepair ${GDAL_LIBRARY} ${Boost_LIBRARIES})
+
+install(TARGETS pprepair DESTINATION bin)
