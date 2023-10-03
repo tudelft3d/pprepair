@@ -20,6 +20,7 @@
  */
 
 #include "IOWorker.h"
+#include <filesystem>
 
 IOWorker::IOWorker() {
   startingSearchFace = Triangulation::Face_handle();
