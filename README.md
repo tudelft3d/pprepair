@@ -43,6 +43,8 @@ You can get all the (advanced) options by running pprepair with no arguments, an
     $ ./build/pprepair --version
     $ ./build/pprepair
 
+Input may be any vector format supported by GDAL. The output driver is selected from the file extension; supported extensions are `.csv`, `.dxf`, `.gdb`, `.geojson`/`.json`, `.gml`, `.gpkg`, `.kml`, `.parquet` and `.shp`. GeoParquet support requires GDAL's Parquet driver, which is provided by the `libgdal-arrow-parquet` package on conda-forge.
+
 ## Can I use pprepair in my organisation? What is the license of pprepair?
 
 pprepair is available under the [GPLv3](http://www.gnu.org/copyleft/gpl.html) licence, which allows you to use, copy and modify the software freely. However, if you incorporate pprepair in your software, you must distribute the source code of your software, as well as any modifications made to pprepair, under the GPLv3 as well.

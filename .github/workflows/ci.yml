@@ -54,6 +54,7 @@ jobs:
             cgal-cpp \
             libgdal-core-devel \
             libgdal-core \
+            libgdal-arrow-parquet \
             libboost-devel \
             gmp \
             mpfr \
@@ -76,3 +77,18 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Test GeoParquet round-trip
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            EXE=build/pprepair.exe
+            export GDAL_DRIVER_PATH="$CONDA_PREFIX/Library/lib/gdalplugins"
+          else
+            EXE=build/pprepair
+            export GDAL_DRIVER_PATH="$CONDA_PREFIX/lib/gdalplugins"
+          fi
+
+          ogrinfo --formats | grep -i Parquet
+          ogr2ogr -f Parquet -lco FID= build/overlap.parquet test/data/overlap.geojson
+          "$EXE" -i build/overlap.parquet -o build/overlap-out.parquet -fix
+          ogrinfo -so -al build/overlap-out.parquet

@@ -24,6 +24,7 @@
 
 IOWorker::IOWorker() {
   startingSearchFace = Triangulation::Face_handle();
+  spatialReference = NULL;
 }
 
 bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &edgesToTag, const char *file, unsigned int schemaIndex) {
@@ -47,7 +48,8 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
     OGRLayer *dataLayer = dataSource->GetLayer(currentLayer);
     dataLayer->ResetReading();
     const OGRSpatialReference* tmp = dataLayer->GetSpatialRef();
-    if ( (tmp != NULL) && (spatialReference != NULL) ) {
+    if (tmp != NULL) {
+      if (spatialReference != NULL) spatialReference->Release();
       spatialReference = tmp->Clone();
     }
 		
@@ -59,6 +61,13 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
     OGRFeatureDefn *layerDefinition = dataLayer->GetLayerDefn();
     insertToStream(std::cout, layerDefinition, 1, schemaIndex);
     
+    const int fieldCount = layerDefinition->GetFieldCount();
+    if (fieldCount == 0 || schemaIndex >= (unsigned int)fieldCount) {
+      std::cerr << "\tError: No valid schema field at index " << schemaIndex
+                << " (layer has " << fieldCount << " attribute field(s))." << std::endl;
+      return false;
+    }
+
     // If it's the first input file, assign the schema type of it
     if (triangulation.number_of_faces() == 0) {
       schemaFieldType = layerDefinition->GetFieldDefn(schemaIndex)->GetType();
@@ -1255,7 +1264,12 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
   else if (extension.compare(".gml") == 0) driverName = "GML";
   else if (extension.compare(".gpkg") == 0) driverName = "GPKG";
   else if (extension.compare(".kml") == 0) driverName = "KML";
+  else if (extension.compare(".parquet") == 0) driverName = "Parquet";
   else if (extension.compare(".shp") == 0) driverName = "ESRI Shapefile";
+  else {
+    std::cout << "\tError: unknown output format." << std::endl;
+    return false;
+  }
 	GDALDriver *driver = GetGDALDriverManager()->GetDriverByName(driverName);
 	if (driver == NULL) {
 		std::cout << "\tError: " << driverName << " driver not found." << std::endl;
@@ -1382,6 +1396,7 @@ bool IOWorker::exportTriangulation(Triangulation &t, const char *file, bool with
   else if (extension.compare(".gml") == 0) driverName = "GML";
   else if (extension.compare(".gpkg") == 0) driverName = "GPKG";
   else if (extension.compare(".kml") == 0) driverName = "KML";
+  else if (extension.compare(".parquet") == 0) driverName = "Parquet";
   else if (extension.compare(".shp") == 0) driverName = "ESRI Shapefile";
   else {
     std::cout << "Error: unknown output format" << std::endl;
