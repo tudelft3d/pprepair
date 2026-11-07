@@ -32,7 +32,13 @@ endif()
 
 # Dependencies
 find_package(CGAL 6 REQUIRED)
-find_package(GDAL 3.0 REQUIRED)
+
+# Prefer GDAL's own CMake package (provided by conda-forge and Homebrew) and
+# fall back to CMake's FindGDAL module for older installations.
+find_package(GDAL 3.0 CONFIG QUIET)
+if(NOT GDAL_FOUND)
+  find_package(GDAL 3.0 REQUIRED)
+endif()
 
 add_executable(pprepair
   FaceInfo.cpp
@@ -67,4 +73,14 @@ include(GNUInstallDirs)
 install(TARGETS pprepair RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 enable_testing()
+
 add_test(NAME pprepair_help COMMAND pprepair --help)
+
+add_test(NAME pprepair_repair
+  COMMAND pprepair
+    -i ${CMAKE_CURRENT_SOURCE_DIR}/test/data/overlap.geojson
+    -o ${CMAKE_CURRENT_BINARY_DIR}/pprepair-repair-output.geojson
+    -fix
+)
+set_tests_properties(pprepair_repair PROPERTIES
+  PASS_REGULAR_EXPRESSION "All polygons are now valid")
