@@ -22,24 +22,26 @@ If you use pprepair for your research, please cite this publication:
 
 ## How do I use pprepair?
 
-pprepair is a command-line program, which we provide as source code. It is very easy to compile it on Linux and Mac. We plan on offering binaries (including for Windows) in the future.
+pprepair is a command-line program, which we provide as source code. It compiles on Linux and macOS; the build system also supports Windows with MSVC.
 
-To compile pprepair, you first need to install the free libraries [CGAL](http://www.cgal.org) and [GDAL](http://www.gdal.org). [CMake](http://www.cmake.org) is highly recommended. Under Mac, you can install pprepair directly using [Homebrew](http://brew.sh/) by typing `brew install tudelft3d/software/pprepair`.
+To compile pprepair, you first need to install the free libraries [CGAL](http://www.cgal.org) (version 6 or newer) and [GDAL](http://www.gdal.org) (version 3 or newer), as well as [CMake](http://www.cmake.org) 3.20 or newer. Under macOS, you can install pprepair directly using [Homebrew](http://brew.sh/) by typing `brew install tudelft3d/software/pprepair`.
 
-Then, run (inside the root of the source tree):
+Then, from the root of the source tree, run an out-of-source build:
 
-    $ mkdir build
-    $ cd build
-    $ cmake -DCMAKE_BUILD_TYPE=Release ..
-    $ make
+    $ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+    $ cmake --build build --parallel
+    $ ctest --test-dir build
+
+On Windows, run the same commands from a Developer Command Prompt. With a multi-config generator such as Visual Studio, use `cmake --build build --config Release` instead.
 
 After successful compilation, run:
 
-    $ ./pprepair -i inputfile -o outputfile -fix
+    $ ./build/pprepair -i inputfile -o outputfile -fix
 
-You can get all the (advanced) options by running pprepair with no arguments:
+You can get all the (advanced) options by running pprepair with no arguments, and the version with `--version`:
 
-    $ ./pprepair
+    $ ./build/pprepair --version
+    $ ./build/pprepair
 
 ## Can I use pprepair in my organisation? What is the license of pprepair?
 

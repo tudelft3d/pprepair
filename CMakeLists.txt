@@ -19,33 +19,52 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.20)
 
-if(POLICY CMP0167)
-  cmake_policy(SET CMP0167 NEW)
+project(pprepair VERSION 1.1.0 LANGUAGES CXX)
+
+# Use a sensible default for single-config generators. Multi-config generators
+# (such as Visual Studio) choose the configuration at build time instead.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo MinSizeRel)
 endif()
 
-project( pprepair )
+# Dependencies
+find_package(CGAL 6 REQUIRED)
+find_package(GDAL 3.0 REQUIRED)
 
-set( CMAKE_BUILD_TYPE "Release")
+add_executable(pprepair
+  FaceInfo.cpp
+  IOWorker.cpp
+  PlanarPartition.cpp
+  PolygonHandle.cpp
+  pprepair.cpp
+)
 
-# CGAL
-find_package( CGAL 6 REQUIRED )
+target_compile_features(pprepair PRIVATE cxx_std_17)
+set_target_properties(pprepair PROPERTIES CXX_EXTENSIONS OFF)
+target_compile_definitions(pprepair PRIVATE PPREPAIR_VERSION="${PROJECT_VERSION}")
 
-# Boost
-find_package( Boost 1.50.0 REQUIRED )
+if(MSVC)
+  # CGAL's constrained triangulation templates exceed the default object
+  # section limit on MSVC, and the sources contain UTF-8 comments.
+  target_compile_options(pprepair PRIVATE /bigobj /utf-8)
+endif()
 
-# GDAL (for I/O)
-find_package( GDAL 3.0 REQUIRED )
-include_directories( ${GDAL_INCLUDE_DIR} )
+if(WIN32)
+  target_compile_definitions(pprepair PRIVATE
+    NOMINMAX
+    WIN32_LEAN_AND_MEAN
+    _CRT_SECURE_NO_WARNINGS
+    _USE_MATH_DEFINES
+  )
+endif()
 
-# Creating entries for target: pprepair
-# ############################
+target_link_libraries(pprepair PRIVATE CGAL::CGAL GDAL::GDAL)
 
-add_executable( pprepair  FaceInfo.cpp IOWorker.cpp PlanarPartition.cpp PolygonHandle.cpp pprepair.cpp )
+include(GNUInstallDirs)
+install(TARGETS pprepair RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-set_property(TARGET pprepair PROPERTY CXX_STANDARD 17)
-
-target_link_libraries(pprepair PRIVATE CGAL::CGAL ${GDAL_LIBRARY} ${Boost_LIBRARIES})
-
-install(TARGETS pprepair DESTINATION bin)
+enable_testing()
+add_test(NAME pprepair_help COMMAND pprepair --help)

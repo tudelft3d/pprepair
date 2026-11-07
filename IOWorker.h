@@ -25,6 +25,12 @@
 #include "FaceInfo.h"
 #include "definitions/CGALDefinitions.h"
 
+#include <cstring>
+#include <map>
+#include <stack>
+#include <utility>
+#include <vector>
+
 class IOWorker {
 public:
   // Construction
@@ -87,8 +93,8 @@ private:
 		int precision;
 		
 		FieldDefinition(const char *n, OGRFieldType t, OGRJustification j, int w, int p) {
-			name = new char[strlen(n)+1];
-			strcpy(name, n);
+			name = new char[std::strlen(n)+1];
+			std::strcpy(name, n);
 			type = t;
 			justification = j;
 			width = w;
@@ -96,13 +102,13 @@ private:
 		}
 		
 		~FieldDefinition() {
-			delete name;
+			delete[] name;
 		}
 		
 		bool matches(FieldDefinition *f) {
 			// For the moment, only exact matches.
 			//  if we had reference data, we could match them together (change values to the ones of the reference and return true)
-			if (strcmp(name, f->name) != 0) return false;
+			if (std::strcmp(name, f->name) != 0) return false;
 			if (type != f->type) return false;
 			if (justification != f->justification) return false;
 			if (width != f->width) return false;

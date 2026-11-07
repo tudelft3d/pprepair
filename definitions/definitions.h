@@ -26,13 +26,20 @@
 #include <ogrsf_frmts.h>
 
 // Standard libraries
-#include <iostream>
-#include <fstream>
-#include <time.h>
-
-// STL containers
-#include <vector>
-#include <list>
 #include <algorithm>
+#include <climits>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <map>
+#include <set>
+#include <stack>
+#include <string>
+#include <utility>
+#include <vector>
 
 #endif

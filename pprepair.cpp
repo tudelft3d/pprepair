@@ -21,6 +21,14 @@
 
 #include "PlanarPartition.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+#ifndef PPREPAIR_VERSION
+#define PPREPAIR_VERSION "unknown"
+#endif
+
 enum RepairMethod {
   VALIDATE_ONLY = -1,
   NUMBER_OF_NEIGHBOURS = 0,
@@ -34,7 +42,13 @@ enum RepairMethod {
 
 int main(int argc, const char *argv[]) {
   
-  time_t startTime = time(NULL);
+#ifdef _WIN32
+  // Write UTF-8 output directly to the Windows console.
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
+#endif
+
+  std::time_t startTime = std::time(NULL);
   PlanarPartition pp;
   bool processInOrder = false;
   
@@ -44,11 +58,18 @@ int main(int argc, const char *argv[]) {
   double splitRegionsRatio = 0.0;
   std::list<std::pair<RepairMethod, std::string> > repairMethods;
   
+  // Process version argument
+  if (argc > 1 && std::strcmp(argv[1], "--version") == 0) {
+    std::cout << "pprepair " << PPREPAIR_VERSION << std::endl;
+    return 0;
+  }
+
   // Process help argument
-  if (argc == 1 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
+  if (argc == 1 || std::strcmp(argv[1], "-h") == 0 || std::strcmp(argv[1], "--help") == 0) {
     std::cout << "=== pprepair Help ===" << std::endl;
     std::cout << "    Simple:   pprepair [options]" << std::endl;
     std::cout << "    Advanced: pprepair -p [processing steps in order]" << std::endl;
+    std::cout << "    Version:  pprepair --version" << std::endl;
     std::cout << "    Example:  ./pprepair -i \"myInput.gpkg\" -o \"myOutput.gpkg\" -fix" << std::endl;
     std::cout << "== Basic options ==" << std::endl;
     std::cout << "    -i filename [schemaindex] Add this file to the triangulation using this schema index" << std::endl;
@@ -85,16 +106,16 @@ int main(int argc, const char *argv[]) {
     // IMPORTANT: When adding new options, check that their order doesn't cause parsing conflicts!!!
     
     // Process in order
-    if (strcmp(argv[argNum], "-p") == 0 && strcmp(argv[argNum], "-pi") != 0) {
+    if (std::strcmp(argv[argNum], "-p") == 0 && std::strcmp(argv[argNum], "-pi") != 0) {
       processInOrder = true;
     }
     
     // Input
-    else if (strcmp(argv[argNum], "-i") == 0) {
+    else if (std::strcmp(argv[argNum], "-i") == 0) {
       if (argNum + 2 <= argc - 1 && argv[argNum+2][0] != '-') {
         ++argNum;
-        if (processInOrder) pp.addToTriangulation(argv[argNum], atoi(argv[argNum+1]));
-        else inputFiles.push_back(std::pair<std::string, int>(argv[argNum], atoi(argv[argNum+1])));
+        if (processInOrder) pp.addToTriangulation(argv[argNum], std::atoi(argv[argNum+1]));
+        else inputFiles.push_back(std::pair<std::string, int>(argv[argNum], std::atoi(argv[argNum+1])));
         ++argNum;
       } else if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
         ++argNum;
@@ -107,7 +128,7 @@ int main(int argc, const char *argv[]) {
     }
     
     // Tag triangulation
-    else if (strcmp(argv[argNum], "-fix") == 0) {
+    else if (std::strcmp(argv[argNum], "-fix") == 0) {
       if (!processInOrder) {
         repairMethods.push_back(std::pair<RepairMethod, std::string>(REGIONS_BY_LONGEST_BOUNDARY, std::string()));
         repairMethods.push_back(std::pair<RepairMethod, std::string>(REGIONS_BY_RANDOM_NEIGHBOUR, std::string()));
@@ -115,12 +136,12 @@ int main(int argc, const char *argv[]) {
     }
     
     // Tag triangulation
-    else if (strcmp(argv[argNum], "-t") == 0) {
+    else if (std::strcmp(argv[argNum], "-t") == 0) {
       if (processInOrder) pp.tagTriangulation();
     }
     
     // Output tagged triangulation
-    else if (strcmp(argv[argNum], "-otnt") == 0) {
+    else if (std::strcmp(argv[argNum], "-otnt") == 0) {
       if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
         ++argNum;
         if (processInOrder) pp.exportTriangulation(argv[argNum], true, false, false);
@@ -132,19 +153,19 @@ int main(int argc, const char *argv[]) {
     }
     
     // Make all holes valid
-    else if (strcmp(argv[argNum], "-vh") == 0) {
+    else if (std::strcmp(argv[argNum], "-vh") == 0) {
       if (processInOrder) pp.makeAllHolesValid();
       else makeHolesValid = true;
     }
     
     // Split regions
-    else if (strcmp(argv[argNum], "-sr") == 0) {
+    else if (std::strcmp(argv[argNum], "-sr") == 0) {
       if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
         ++argNum;
-        if (processInOrder) pp.splitRegions(atof(argv[argNum]));
+        if (processInOrder) pp.splitRegions(std::atof(argv[argNum]));
         else {
           splitRegions = true;
-          splitRegionsRatio = atof(argv[argNum]);
+          splitRegionsRatio = std::atof(argv[argNum]);
         }
       } else {
         std::cerr << "Error: Missing ratio argument for -sr";
@@ -153,48 +174,48 @@ int main(int argc, const char *argv[]) {
     }
     
     // Validate
-    else if (strcmp(argv[argNum], "-v") == 0) {
+    else if (std::strcmp(argv[argNum], "-v") == 0) {
       if (processInOrder) pp.checkValidity();
       else repairMethods.push_back(std::pair<RepairMethod, std::string>(VALIDATE_ONLY, std::string()));
     }
     
     // Validate
-    else if (strcmp(argv[argNum], "-au") == 0) {
+    else if (std::strcmp(argv[argNum], "-au") == 0) {
       alsoUniverse = !alsoUniverse;
     }
     
     // Repair triangle by number of neighbours
-    else if (strcmp(argv[argNum], "-rtnn") == 0) {
+    else if (std::strcmp(argv[argNum], "-rtnn") == 0) {
       if (processInOrder) pp.repairTrianglesByNumberOfNeighbours(alsoUniverse);
       else repairMethods.push_back(std::pair<RepairMethod, std::string>(NUMBER_OF_NEIGHBOURS, std::string()));
     }
     
     // Repair triangles by absolute majority
-    else if (strcmp(argv[argNum], "-rtam") == 0) {
+    else if (std::strcmp(argv[argNum], "-rtam") == 0) {
       if (processInOrder) pp.repairTrianglesByAbsoluteMajority(alsoUniverse);
       else repairMethods.push_back(std::pair<RepairMethod, std::string>(ABSOLUTE_MAJORITY, std::string()));
     }
     
     // Repair triangles by longest boundary
-    else if (strcmp(argv[argNum], "-rtlb") == 0) {
+    else if (std::strcmp(argv[argNum], "-rtlb") == 0) {
       if (processInOrder) pp.repairTrianglesByLongestBoundary(alsoUniverse);
       else repairMethods.push_back(std::pair<RepairMethod, std::string>(LONGEST_BOUNDARY, std::string()));
     }
     
     // Repair regions by longest boundary
-    else if (strcmp(argv[argNum], "-rrlb") == 0) {
+    else if (std::strcmp(argv[argNum], "-rrlb") == 0) {
       if (processInOrder) pp.repairRegionsByLongestBoundary(alsoUniverse);
       else repairMethods.push_back(std::pair<RepairMethod, std::string>(REGIONS_BY_LONGEST_BOUNDARY, std::string()));
     }
     
     // Repair regions by random neighbour
-    else if (strcmp(argv[argNum], "-rrrn") == 0) {
+    else if (std::strcmp(argv[argNum], "-rrrn") == 0) {
       if (processInOrder) pp.repairRegionsByRandomNeighbour(alsoUniverse);
       else repairMethods.push_back(std::pair<RepairMethod, std::string>(REGIONS_BY_RANDOM_NEIGHBOUR, std::string()));
     }
     
     // Repair by priority list
-    else if (strcmp(argv[argNum], "-rpl") == 0) {
+    else if (std::strcmp(argv[argNum], "-rpl") == 0) {
       if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
         ++argNum;
         if (processInOrder) pp.repairByPriorityList(argv[argNum]);
@@ -206,7 +227,7 @@ int main(int argc, const char *argv[]) {
     }
     
     // Repair by priority list (edge matching)
-    else if (strcmp(argv[argNum], "-rem") == 0) {
+    else if (std::strcmp(argv[argNum], "-rem") == 0) {
       if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
         ++argNum;
         if (processInOrder) pp.repairEdgeMatching(argv[argNum]);
@@ -218,7 +239,7 @@ int main(int argc, const char *argv[]) {
     }
     
     // Output triangulation with provenance
-    else if (strcmp(argv[argNum], "-otwp") == 0) {
+    else if (std::strcmp(argv[argNum], "-otwp") == 0) {
       if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
         ++argNum;
         if (processInOrder) pp.exportTriangulation(argv[argNum], false, true, true);
@@ -230,7 +251,7 @@ int main(int argc, const char *argv[]) {
     }
     
     // Output triangulation
-    else if (strcmp(argv[argNum], "-ot") == 0) {
+    else if (std::strcmp(argv[argNum], "-ot") == 0) {
       if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
         ++argNum;
         if (processInOrder) pp.exportTriangulation(argv[argNum], false, true, false);
@@ -242,23 +263,23 @@ int main(int argc, const char *argv[]) {
     }
     
     // Match schemata
-    else if (strcmp(argv[argNum], "-d") == 0) {
+    else if (std::strcmp(argv[argNum], "-d") == 0) {
       if (processInOrder) pp.matchSchemata();
       else matchSchemata = true;
     }
     
     // Match schemata
-    else if (strcmp(argv[argNum], "-bd") == 0) {
+    else if (std::strcmp(argv[argNum], "-bd") == 0) {
       bigData = true;
     }
     
     // Reconstruct polygons
-    else if (strcmp(argv[argNum], "-rp") == 0) {
+    else if (std::strcmp(argv[argNum], "-rp") == 0) {
       if (processInOrder) pp.reconstructPolygons(bigData);
     }
     
     // Output with provenance
-    else if (strcmp(argv[argNum], "-owp") == 0) {
+    else if (std::strcmp(argv[argNum], "-owp") == 0) {
       if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
         ++argNum;
         if (processInOrder) pp.exportPolygons(argv[argNum], true);
@@ -270,7 +291,7 @@ int main(int argc, const char *argv[]) {
     }
     
     // Output
-    else if (strcmp(argv[argNum], "-o") == 0) {
+    else if (std::strcmp(argv[argNum], "-o") == 0) {
       if (argNum + 1 <= argc - 1 && argv[argNum+1][0] != '-') {
         ++argNum;
         if (processInOrder) pp.exportPolygons(argv[argNum], false);
@@ -282,7 +303,7 @@ int main(int argc, const char *argv[]) {
     }
     
     // Print triangulation information
-    else if (strcmp(argv[argNum], "-pi") == 0) {
+    else if (std::strcmp(argv[argNum], "-pi") == 0) {
       if (processInOrder) pp.printInfo();
     }
     
@@ -391,7 +412,7 @@ int main(int argc, const char *argv[]) {
     if (outputFileWithProvenance.size() > 0) pp.exportPolygons(outputFileWithProvenance.c_str(), true);
   }
   
-  time_t totalTime = time(NULL)-startTime;
+  std::time_t totalTime = std::time(NULL)-startTime;
 	std::cout << "Done! Process finished in " << totalTime/60 << " minutes " << totalTime%60 << " seconds." << std::endl;
   
   return 0;

@@ -34,8 +34,8 @@ bool IOWorker::addToTriangulation(Triangulation &triangulation, TaggingVector &e
 		return false;
 	}
   
-  char *name = new char[strlen(file)+1];
-	strcpy(name, file);
+  char *name = new char[std::strlen(file)+1];
+	std::strcpy(name, file);
 	fileNames.push_back(name);
 	std::cout << "\tPath: " << name << std::endl;
 	std::cout << "\tType: " << dataSource->GetDriverName() << std::endl;
@@ -391,14 +391,14 @@ bool IOWorker::splitRegions(Triangulation &triangulation, double ratio) {
 	for (Triangulation::Finite_faces_iterator currentFace = triangulation.finite_faces_begin(); currentFace != triangulation.finite_faces_end(); ++currentFace) {
 		
 		// Check for the longest and shortest sides
-		shortSide = longSide = sqrt(CGAL::to_double(triangulation.segment(currentFace, 0).squared_length()));
+		shortSide = longSide = std::sqrt(CGAL::to_double(triangulation.segment(currentFace, 0).squared_length()));
 		whichSide = 0;
-		thisSide = sqrt(CGAL::to_double(triangulation.segment(currentFace, 1).squared_length()));
+		thisSide = std::sqrt(CGAL::to_double(triangulation.segment(currentFace, 1).squared_length()));
 		if (thisSide > longSide) longSide = thisSide;
 		else if (thisSide < shortSide) {
 			shortSide = thisSide;
 			whichSide = 1;
-		} thisSide = sqrt(CGAL::to_double(triangulation.segment(currentFace, 2).squared_length()));
+		} thisSide = std::sqrt(CGAL::to_double(triangulation.segment(currentFace, 2).squared_length()));
 		if (thisSide > longSide) longSide = thisSide;
 		else if (thisSide < shortSide) {
 			shortSide = thisSide;
@@ -522,9 +522,9 @@ bool IOWorker::repairTrianglesByLongestBoundary(Triangulation &triangulation, bo
 		if (!currentFace->info().hasOneTag()) {
 			
 			// Add up the boundary for each tag
-			addToLength(tagBoundaryLength, currentFace->neighbor(0)->info().getTags(), sqrt(CGAL::to_double(triangulation.segment(currentFace, 0).squared_length())));
-			addToLength(tagBoundaryLength, currentFace->neighbor(1)->info().getTags(), sqrt(CGAL::to_double(triangulation.segment(currentFace, 1).squared_length())));
-			addToLength(tagBoundaryLength, currentFace->neighbor(2)->info().getTags(), sqrt(CGAL::to_double(triangulation.segment(currentFace, 2).squared_length())));
+			addToLength(tagBoundaryLength, currentFace->neighbor(0)->info().getTags(), std::sqrt(CGAL::to_double(triangulation.segment(currentFace, 0).squared_length())));
+			addToLength(tagBoundaryLength, currentFace->neighbor(1)->info().getTags(), std::sqrt(CGAL::to_double(triangulation.segment(currentFace, 1).squared_length())));
+			addToLength(tagBoundaryLength, currentFace->neighbor(2)->info().getTags(), std::sqrt(CGAL::to_double(triangulation.segment(currentFace, 2).squared_length())));
       
 			// Find the tag with longest boundary
 			double maxLength = 0.0;
@@ -593,11 +593,11 @@ bool IOWorker::repairRegionsByLongestBoundary(Triangulation &triangulation, bool
 			// Add up the boundary for each triangle and tag
 			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
 				if (!facesInRegion.count((*currentFaceInRegion)->neighbor(0))) {
-					addToLength(tagBoundaryLength, (*currentFaceInRegion)->neighbor(0)->info().getTags(), sqrt(CGAL::to_double(triangulation.segment(*currentFaceInRegion, 0).squared_length())));
+					addToLength(tagBoundaryLength, (*currentFaceInRegion)->neighbor(0)->info().getTags(), std::sqrt(CGAL::to_double(triangulation.segment(*currentFaceInRegion, 0).squared_length())));
 				} if (!facesInRegion.count((*currentFaceInRegion)->neighbor(1))) {
-					addToLength(tagBoundaryLength, (*currentFaceInRegion)->neighbor(1)->info().getTags(), sqrt(CGAL::to_double(triangulation.segment(*currentFaceInRegion, 1).squared_length())));
+					addToLength(tagBoundaryLength, (*currentFaceInRegion)->neighbor(1)->info().getTags(), std::sqrt(CGAL::to_double(triangulation.segment(*currentFaceInRegion, 1).squared_length())));
 				} if (!facesInRegion.count((*currentFaceInRegion)->neighbor(2))) {
-					addToLength(tagBoundaryLength, (*currentFaceInRegion)->neighbor(2)->info().getTags(), sqrt(CGAL::to_double(triangulation.segment(*currentFaceInRegion, 2).squared_length())));
+					addToLength(tagBoundaryLength, (*currentFaceInRegion)->neighbor(2)->info().getTags(), std::sqrt(CGAL::to_double(triangulation.segment(*currentFaceInRegion, 2).squared_length())));
 				}
 			}
 			
@@ -689,7 +689,7 @@ bool IOWorker::repairRegionsByRandomNeighbour(Triangulation &triangulation, bool
 				}
 			}
 			if (candidateTags.empty()) continue;
-			PolygonHandle *tagToAssign = candidateTags[rand() % candidateTags.size()];
+			PolygonHandle *tagToAssign = candidateTags[std::rand() % candidateTags.size()];
 			
 			// Assign the region to the random tag
 			for (std::set<Triangulation::Face_handle>::iterator currentFaceInRegion = facesInRegion.begin(); currentFaceInRegion != facesInRegion.end(); ++currentFaceInRegion) {
@@ -1288,7 +1288,7 @@ bool IOWorker::exportPolygons(std::vector<std::pair<PolygonHandle *, Polygon> > 
 	if (withProvenance) {
 		unsigned long longest = 0;
 		for (std::vector<char *>::iterator currentFileName = fileNames.begin(); currentFileName != fileNames.end(); ++currentFileName) {
-			if (strlen(*currentFileName) > longest) longest = strlen(*currentFileName);
+			if (std::strlen(*currentFileName) > longest) longest = std::strlen(*currentFileName);
 		} OGRFieldDefn filenameField("File", OFTString);
 		filenameField.SetWidth((int)longest);
 		if (layer->CreateField(&filenameField) != OGRERR_NONE) {
@@ -1426,7 +1426,7 @@ bool IOWorker::exportTriangulation(Triangulation &t, const char *file, bool with
 	if (withProvenance) {
 		unsigned long longest = 0;
 		for (std::vector<char *>::iterator currentFileName = fileNames.begin(); currentFileName != fileNames.end(); ++currentFileName) {
-			if (strlen(*currentFileName) > longest) longest = strlen(*currentFileName);
+			if (std::strlen(*currentFileName) > longest) longest = std::strlen(*currentFileName);
 		} OGRFieldDefn filenameField("File", OFTString);
 		filenameField.SetWidth((int)longest);
 		if (layer->CreateField(&filenameField) != OGRERR_NONE) {

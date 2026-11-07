@@ -22,6 +22,10 @@
 #ifndef CGALDEFINITIONS_H
 #define CGALDEFINITIONS_H
 
+// Standard libraries used by the definitions below
+#include <utility>
+#include <vector>
+
 // Compile-time options
 #define EXACT_CONSTRUCTIONS       // Exact arithmetic: memory and processing time increase
 //#define TRIANGULATION_HIERARCHY   // Faster point location algorithm: more memory

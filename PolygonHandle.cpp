@@ -93,15 +93,15 @@ StringField::StringField(const char *v) {
 }
 
 StringField::~StringField() {
-	free(contents);
+	delete[] contents;
 }
 
 bool StringField::operator<(const StringField &f) const {
-	return strcmp(f.contents, contents) < 0;
+	return std::strcmp(f.contents, contents) < 0;
 }
 
 bool StringField::operator==(const StringField &f) const {
-	return strcmp(f.contents, contents) == 0;
+	return std::strcmp(f.contents, contents) == 0;
 }
 
 const OGRFieldType StringField::getType() const {
@@ -113,8 +113,8 @@ const char * StringField::getValueAsString() {
 }
 
 void StringField::setValueFromString(const char *v) {
-	contents = new char[(strlen(v)+1)];
-	strcpy(contents, v);
+	contents = new char[(std::strlen(v)+1)];
+	std::strcpy(contents, v);
 }
 
 DoubleField::DoubleField(double v) {
